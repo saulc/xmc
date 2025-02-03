@@ -12,6 +12,8 @@ class App(tk.Frame):
         super().__init__(master)
         self.pack()
         self.path = path
+        self.home = path
+        self.root = root
         self.master = master
 
         self.entrythingy = tk.Entry()
@@ -28,6 +30,7 @@ class App(tk.Frame):
         self.list.bind('<<ListboxSelect>>', self.onSelect)    
  
         root.bind("<Button>", self.click_handler)
+        root.bind('<KeyPress>', self.onKeyPress) 
 
     def print_contents(self, event):
         print("Hi. The current entry content is:",
@@ -40,19 +43,24 @@ class App(tk.Frame):
     def setOne(self, s):
         self.list.delete(0, self.list.size())
         print(s)
-        self.one = s.sort()  
+        self.one = s.sort(key=str.casefold)  
         for i in range(len(s)):
             self.list.insert(i, s[i])
 
+        if self.list.size() > 0:
+            self.list.selection_set(0)
+
     def onSelect(self):
-    	print('on select')
+        print('on select')
 
     def click_handler(self, event):
         # event also has x & y attributes
         print(str(event.num) + ' x y: ' + str(event.x) + ' ' + str(event.y))
         if event.num == 3:
             print("RIGHT CLICK")
+            self.click()
 
+    def click(self):
             item = self.get_selected_items()
             ip = self.path +item 
             print(ip)
@@ -60,7 +68,11 @@ class App(tk.Frame):
               subprocess.call(['open',  ip ]) 
             else: 
                 print('click')
-                self.path += self.get_selected_items() +'/'
+                self.setPath()
+                
+    def setPath(self, back=False):
+                if(not back):
+                    self.path += self.get_selected_items() +'/'
                 print(self.path)
                 d, f = getFiles(self.path)
                 self.setOne(d+f) 
@@ -72,10 +84,37 @@ class App(tk.Frame):
         print(selected_items)
         if len(selected_items) > 0 : return selected_items[0] 
         else: return ''
+    
+    def onKeyPress(self, event):
+        print(event)
+        k = event.keycode
+        if k == 855638143:
+            #delete
+            print('up')
+            self.path = up(self.path)
+            self.setPath(True)
+        elif k == 603979789:
+            #enter
+            print('select')
+            self.click()
+        elif k == 889192475:
+            #esc
+            print('exit')
+            self.root.destroy()
+        elif k == 67108968: #jk 671088747 637534314
+            #esc
+            print('home')
+            self.path = self.home
+            self.setPath(True)
 
-
-
-
+def up(p):
+    print(p)
+    l = len(p)
+    r = p[0:l-1].rfind('/')
+    print(r)
+    p = p[0: r+1]
+    print(p)
+    return p
 
 # Get the list of all files and directories
 # p = "/Volumes/T7/Fast and Furious/"
@@ -111,16 +150,19 @@ def showFiles(openDirs = False):
 
     return dr, files
 
+
+ 
+
 msg = '--- ACME OSX MEDIA CENTER ---'
 dr, files = showFiles()
 # makeWindow()
 
 
+
 root = tk.Tk()
 root.config(bg='black')
 root.geometry('600x500')
-
-
+ 
 
 # Create notebook widget
 notebook = ttk.Notebook(root)
@@ -137,7 +179,7 @@ notebook.add(tab3, text="Tab 3")
 
 
 myapp1 = App(root, tab1, p)  
-myapp1.setOne(dr) 
+myapp1.setOne(dr+files) 
   
 
  

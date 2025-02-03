@@ -1,36 +1,33 @@
 import os
 
 import tkinter as tk
+from tkinter import ttk
 
 import subprocess
 
 
 
 class App(tk.Frame):
-    def __init__(self, master, path):
+    def __init__(self, root,  master, path):
         super().__init__(master)
         self.pack()
         self.path = path
+        self.master = master
 
         self.entrythingy = tk.Entry()
-        self.entrythingy.pack(pady = 20)
-
-        # Create the application variable.
-        self.contents = tk.StringVar()
-        # Set it to some value.
-        self.contents.set("this is a variable")
-        # Tell the entry widget to watch this variable.
-        self.entrythingy["textvariable"] = self.contents
-
-        # Define a callback for when the user hits return.
-        # It prints the current value of the variable.
+        self.entrythingy.pack(pady = 20) 
+        self.contents = tk.StringVar() 
+        self.contents.set(path) 
+        self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
+
         # Add widgets to tab1 
         self.one = []
-        self.list = tk.Listbox(master) 
+        self.list = tk.Listbox(master, font="Helvetica 11 bold")   
         self.list.pack(expand=True, fill="both")
+        self.list.bind('<<ListboxSelect>>', self.onSelect)    
  
-        master.bind("<Button>", self.click_handler)
+        root.bind("<Button>", self.click_handler)
 
     def print_contents(self, event):
         print("Hi. The current entry content is:",
@@ -41,11 +38,14 @@ class App(tk.Frame):
         self.contents.set(s)
 
     def setOne(self, s):
-        self.one = s
+        self.list.delete(0, self.list.size())
+        print(s)
+        self.one = s.sort()  
         for i in range(len(s)):
             self.list.insert(i, s[i])
 
-   
+    def onSelect(self):
+    	print('on select')
 
     def click_handler(self, event):
         # event also has x & y attributes
@@ -54,33 +54,32 @@ class App(tk.Frame):
             print("RIGHT CLICK")
 
             item = self.get_selected_items()
-            ip = espath(self.path +item ) 
+            ip = self.path +item 
             print(ip)
-            subprocess.call(['open',  ip ]) 
+            if os.path.isfile(ip):
+              subprocess.call(['open',  ip ]) 
+            else: 
+                print('click')
+                self.path += self.get_selected_items() +'/'
+                print(self.path)
+                d, f = getFiles(self.path)
+                self.setOne(d+f) 
+                self.setCon(self.path)
 
     def get_selected_items(self):
         selected_indices = self.list.curselection()
         selected_items = [self.list.get(index) for index in selected_indices]
         print(selected_items)
-        return selected_items[0]
+        if len(selected_items) > 0 : return selected_items[0] 
+        else: return ''
 
-def espath(p):
-    print(p)
-    q = ''
-    i = 0
-    for l in p:
-        # if l.isspace():
-        #     q += "\\"
-        # i += 1
-        # if(i >8):
-            q += l
-    print(q)
-    return q
+
+
 
 
 # Get the list of all files and directories
-p = "/Volumes/T7/potter/"
-# p = "/Volumes/T7/"
+# p = "/Volumes/T7/Fast and Furious/"
+p = "/Volumes/T7/"
 # path = "/Users/user/Dev/xmc"
 
 def getFiles(path):
@@ -110,20 +109,40 @@ def showFiles(openDirs = False):
             f = getFiles(p+'/'+d)
             print(f)
 
-    return files
+    return dr, files
 
 msg = '--- ACME OSX MEDIA CENTER ---'
-files = showFiles()
+dr, files = showFiles()
 # makeWindow()
 
 
 root = tk.Tk()
 root.config(bg='black')
 root.geometry('600x500')
-myapp = App(root, p) 
+
+
+
+# Create notebook widget
+notebook = ttk.Notebook(root)
+notebook.pack(expand=True, fill="both")
+
+# Create frames for each tab
+tab1 = ttk.Frame(notebook)
+tab2 = ttk.Frame(notebook)
+tab3 = ttk.Frame(notebook)
+
+notebook.add(tab1, text="Tab 1")
+notebook.add(tab2, text="Tab 2")
+notebook.add(tab3, text="Tab 3")
+
+
+myapp1 = App(root, tab1, p)  
+myapp1.setOne(dr) 
+  
+
  
-myapp.master.title(msg) 
-myapp.setOne(files) 
+
 
 # start the program
-myapp.mainloop()
+myapp1.mainloop()
+

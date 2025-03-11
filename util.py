@@ -1,10 +1,12 @@
 import os
+from random import randint
 
 import tkinter as tk
 from tkinter import ttk
 
 import subprocess
 
+import urllib.request
 
 
 class App(tk.Frame):
@@ -39,7 +41,7 @@ class App(tk.Frame):
         # Add widgets to tab1 
         self.one = []
         self.list = tk.Listbox(master, font="Helvetica 14")   
-        self.list.pack(expand=True, fill="both")
+        self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.bind('<<ListboxSelect>>', self.onSelect)    
  
         root.bind("<Button>", self.click_handler)
@@ -69,21 +71,23 @@ class App(tk.Frame):
     def chop(self, s):
         print(s)
         r = ''
-        s = s.split('.')
-        if len(s) == 1: s = s[0].split(' ')
-        print(s)
+        rr = [] 
+        for t in s.split(' '):
+            rr += t.split('.')
+        print(rr)
         # if len(s) > 1:
-        for i in range(len(s)):
+        for i in range(len(rr)):
+            print(str(i) + ' ' + rr[i])
             try:
-                
-                if int(s[i]): break
+                if rr[i][0]=='(': break
+                if int(rr[i]): 
+                    if len(rr[i]) == 4 : break
             except Exception as e:
                 print(e)
-            
-                
-                r += s[i] # + ' '
+            r +=  rr[i]+'%20'
+            # r += rr[i] # + ' '
         # else: s = s[0]
-        print(r)
+        print('query' , r)
         return  r
 
 
@@ -137,10 +141,31 @@ class App(tk.Frame):
             #esc
             print('exit')
             self.root.destroy()
-        elif k == 67108968: #jk 671088747 637534314
+        elif k == 67108968: #jk 637534314 671088747 
             #esc
             print('home')
             self.goHome()
+        elif k == 637534314: 
+            #esc
+            print('j')
+            self.openDir()
+        elif k == 671088747: 
+            #esc
+            print('k')
+            
+        elif k == 150995062: 
+            #esc
+            print('v')
+            self.openVlc()
+        elif k == 251658354: 
+            #esc
+            r = randint(0,self.list.size())
+            print('r ', r)   
+            #random vid
+            self.list.selection_clear(0)
+            self.list.selection_set(r) 
+            self.click()
+
 
     def goHome(self):
             self.path = self.home
@@ -152,19 +177,38 @@ class App(tk.Frame):
     def goUp(self):
             self.path = up(self.path)
             self.setPath(True)
+   
+    def openDir(self):
+        ip = self.path 
+        print(ip)
+        if not os.path.isfile(ip):
+          subprocess.call(['open',  ip ]) 
+
+    def openVlc(self):
+
+        item = self.get_selected_items()
+        ip = self.path +item 
+        print(ip)
+        if os.path.isfile(ip):
+          subprocess.call(['open', '-a', 'vlc',  ip ]) 
 
     def checkDb(self):
 
         item = self.get_selected_items()
         q =  self.chop(item) 
         print(q)
-        cu = "curl --request GET \\" 
-        c1 = "--url 'https://api.themoviedb.org/3/search/movie?query=" + q + "&include_adult=false&language=en-US&page=1'\\" 
-        c2 = "--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MmY5YjIwNGVhYTc1ZDJjNDIwNDI0YTg1NjQxZTg2OCIsIm5iZiI6MTczODU2NTI0Ny4wMTgsInN1YiI6IjY3YTA2NjdmMGQxOWYzMGFjMTk1OGJlOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.JAPC1o8OdPHWMQfRUishyHT8qO7CvLSqQsCLvE-Ppso'\\" 
-        c3 = "--header 'accept: application/json' "
-        cc =  cu + c1 + c2 + c3
-
-        subprocess.call([ cu, c1, c2, c3]) 
+     
+        url = "https://api.themoviedb.org/3/search/movie?query=" + q + "&include_adult=false&language=en-US&page=1" 
+        dat =  'Accept: application/json, '
+        d2 = 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MmY5YjIwNGVhYTc1ZDJjNDIwNDI0YTg1NjQxZTg2OCIsIm5iZiI6MTczODU2NTI0Ny4wMTgsInN1YiI6IjY3YTA2NjdmMGQxOWYzMGFjMTk1OGJlOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.JAPC1o8OdPHWMQfRUishyHT8qO7CvLSqQsCLvE-Ppso'
+        dat = dat + d2
+        # payload = open("request.json")
+        # headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MmY5YjIwNGVhYTc1ZDJjNDIwNDI0YTg1NjQxZTg2OCIsIm5iZiI6MTczODU2NTI0Ny4wMTgsInN1YiI6IjY3YTA2NjdmMGQxOWYzMGFjMTk1OGJlOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.JAPC1o8OdPHWMQfRUishyHT8qO7CvLSqQsCLvE-Ppso' ,
+      # 'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
+        # r = rq.post(url, data=payload, headers=headers)
+        r = urllib.request.urlopen(url, dat.encode('utf-8')).read()
+        print(r)
+ 
 def up(p):
     print(p)
     l = len(p)
@@ -219,24 +263,24 @@ dr, files = showFiles()
 
 root = tk.Tk()
 root.config(bg='black')
-root.geometry('600x500')
+root.geometry('600x1000')
  
 
-# Create notebook widget
-notebook = ttk.Notebook(root)
-notebook.pack(expand=True, fill="both")
+# # Create notebook widget
+# notebook = ttk.Notebook(root)
+# notebook.pack(expand=True, fill="both")
 
 # Create frames for each tab
-tab1 = ttk.Frame(notebook)
-tab2 = ttk.Frame(notebook)
-tab3 = ttk.Frame(notebook)
+# tab1 = ttk.Frame(notebook)
+# tab2 = ttk.Frame(notebook)
+# tab3 = ttk.Frame(notebook)
 
-notebook.add(tab1, text="Tab 1")
-notebook.add(tab2, text="Tab 2")
-notebook.add(tab3, text="Tab 3")
+# notebook.add(tab1, text="Tab 1")
+# notebook.add(tab2, text="Tab 2")
+# notebook.add(tab3, text="Tab 3")
 
 
-myapp1 = App(root, tab1, p)  
+myapp1 = App(root, root, p)  
 myapp1.setOne(dr,files) 
   
 

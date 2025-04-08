@@ -8,6 +8,13 @@ import subprocess
 
 import urllib.request
 
+import request
+
+from PIL import ImageTk, Image 
+
+import xdb
+
+
 
 class App(tk.Frame):
     def __init__(self, root,  master, path):
@@ -17,7 +24,9 @@ class App(tk.Frame):
         self.home = path
         self.root = root
         self.master = master
-        
+        self.root.title("xmc")
+
+        # self.root.configure(bg="grey")
         self.buttonframe = tk.Frame(master)      
         
         self.homebutton = tk.Button(self.buttonframe, text="Home", command=self.goHome)
@@ -36,7 +45,31 @@ class App(tk.Frame):
         self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
 
-        self.buttonframe.pack(pady=10)
+
+        self.topFrame = tk.Frame(master)
+        self.posterFrame = tk.Frame( self.topFrame ) 
+
+        img = Image.open("./posters/Iron%20Man%20%202008%20.jpg")
+        img = img.resize((300, 420), 0)
+        img = ImageTk.PhotoImage(img)
+        self.img = img
+        self.panel = tk.Label(self.posterFrame, image = self.img, width=300, height=420)
+        self.panel.grid(row=0, column=0)
+        
+        self.xlist = tk.Listbox(self.topFrame, font="Helvetica 14", width=60, height=24)  
+        self.xlist.grid(row=0, column=1, padx=2,pady=1)
+        self.xlist.bind('<<ListboxSelect>>', self.onSelect)    
+        self.loadMovers()
+
+        self.text_widget = tk.Text(self.posterFrame, width=42, height=10)
+        self.text_widget.grid(row=1, column=0)
+
+        # Insert text into the widget
+        self.text_widget.insert("1.0", "This is the first line.\n")
+        self.text_widget.insert("2.0", "This is the second line.")
+
+        self.posterFrame.grid(row=0, column=0)
+        self.topFrame.pack(pady=1, padx=1)
       
         # Add widgets to tab1 
         self.one = []
@@ -44,6 +77,10 @@ class App(tk.Frame):
         self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.bind('<<ListboxSelect>>', self.onSelect)    
  
+
+        self.buttonframe.pack(pady=10)  #add buttons to the bottom
+
+
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
 
@@ -51,6 +88,10 @@ class App(tk.Frame):
         print("Hi. The current entry content is:",
               self.contents.get())
         
+    def loadMovers(self):
+        m = xdb.getAllMovies()
+        for i in range( len(m) ):
+            self.xlist.insert(i, m[i])  
 
     def setCon(self, s):
         self.contents.set(s)
@@ -72,6 +113,7 @@ class App(tk.Frame):
         print(s)
         r = ''
         rr = [] 
+        y = 0
         for t in s.split(' '):
             rr += t.split('.')
         print(rr)
@@ -81,14 +123,18 @@ class App(tk.Frame):
             try:
                 if rr[i][0]=='(': break
                 if int(rr[i]): 
-                    if len(rr[i]) == 4 : break
+                    if len(rr[i]) == 4 : 
+                        y = rr[i]
+                        break
             except Exception as e:
                 print(e)
-            r +=  rr[i]+'%20'
+
+            if i > 0: r += '%20'
+            r +=  rr[i]
             # r += rr[i] # + ' '
         # else: s = s[0]
         print('query' , r)
-        return  r
+        return  r, y
 
 
     def onSelect(self):
@@ -141,31 +187,48 @@ class App(tk.Frame):
             #esc
             print('exit')
             self.root.destroy()
-        elif k == 67108968: #jk 637534314 671088747 
-            #esc
+        elif k == 67108968: 
             print('home')
             self.goHome()
-        elif k == 637534314: 
-            #esc
-            print('j')
+        elif k == 637534314:
+            print('J')
             self.openDir()
         elif k == 671088747: 
-            #esc
-            print('k')
+            print('K')
+        elif k == 620757100: 
+            print('L')
             
+        elif k == 97: 
+            print('A')  #play folder
+            self.list.selection_clear(0) 
+            self.list.selection_set(0, self.list.size())  
+            # ip = self.path 
+            ip = []
+            for i in self.list.curselection():
+                ip.append(   self.path + self.list.get(i) + ' ')
+            print(ip)
+            subprocess.call(['open', '-a', 'vlc',  str(ip) ]) 
+
         elif k == 150995062: 
-            #esc
-            print('v')
+            print('V')
             self.openVlc()
+
         elif k == 251658354: 
-            #esc
             r = randint(0,self.list.size())
-            print('r ', r)   
+            print('R ', r)   
             #random vid
-            self.list.selection_clear(0)
+            self.list.selection_clear(0) 
             self.list.selection_set(r) 
             self.click()
 
+    def form(self, s):
+        r = ''
+        for i in range(0, len(s)):
+            l = s[i]
+            if l == ' ' or l == '[' or l == '(': 
+                r += '\\'
+            r += l
+        return r 
 
     def goHome(self):
             self.path = self.home
@@ -185,29 +248,37 @@ class App(tk.Frame):
           subprocess.call(['open',  ip ]) 
 
     def openVlc(self):
-
-        item = self.get_selected_items()
-        ip = self.path +item 
-        print(ip)
+ 
+        ip = self.path  + self.get_selected_items()
+        print('vlc :' ,ip)
         if os.path.isfile(ip):
           subprocess.call(['open', '-a', 'vlc',  ip ]) 
 
     def checkDb(self):
 
         item = self.get_selected_items()
-        q =  self.chop(item) 
+        q, y =  self.chop(item) 
         print(q)
-     
-        url = "https://api.themoviedb.org/3/search/movie?query=" + q + "&include_adult=false&language=en-US&page=1" 
-        dat =  'Accept: application/json, '
-        d2 = 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MmY5YjIwNGVhYTc1ZDJjNDIwNDI0YTg1NjQxZTg2OCIsIm5iZiI6MTczODU2NTI0Ny4wMTgsInN1YiI6IjY3YTA2NjdmMGQxOWYzMGFjMTk1OGJlOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.JAPC1o8OdPHWMQfRUishyHT8qO7CvLSqQsCLvE-Ppso'
-        dat = dat + d2
-        # payload = open("request.json")
-        # headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MmY5YjIwNGVhYTc1ZDJjNDIwNDI0YTg1NjQxZTg2OCIsIm5iZiI6MTczODU2NTI0Ny4wMTgsInN1YiI6IjY3YTA2NjdmMGQxOWYzMGFjMTk1OGJlOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.JAPC1o8OdPHWMQfRUishyHT8qO7CvLSqQsCLvE-Ppso' ,
-      # 'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-        # r = rq.post(url, data=payload, headers=headers)
-        r = urllib.request.urlopen(url, dat.encode('utf-8')).read()
-        print(r)
+        r = request.qdb(q, y)
+        i = 0
+        rl = 0
+        dl = 0
+        tl = 0
+        for l in r:
+            print(i, l)
+            if 'release_date' in l: rl = i
+            if 'original_title' in l: tl = i
+            if 'overview' in l: dl = i
+            i+=1
+
+        ds = r[dl][11:-2] 
+        ds = ds.replace("'", "")
+        ds = ds.replace('"', '')
+        rr = [r[tl][18:-1], self.path, item ,ds, r[rl][16:-1] ]  #
+        xdb.addMovie(rr)
+        xdb.getAllMovies()
+
+
  
 def up(p):
     print(p)

@@ -25,6 +25,7 @@ class App(tk.Frame):
         self.root = root
         self.master = master
         self.root.title("xmc")
+        self.citem = ''
 
         # self.root.configure(bg="grey")
         self.buttonframe = tk.Frame(master)      
@@ -140,6 +141,7 @@ class App(tk.Frame):
         self.text_widget.insert("1.0", info[0] + '\n')
         self.text_widget.insert("2.0", info[6]+ '\n')
         self.text_widget.insert("3.0", info[5]+ '\n')
+        self.citem = info[3] + info[4]
 
     def setCon(self, s):
         self.contents.set(s)
@@ -196,6 +198,7 @@ class App(tk.Frame):
             self.click()
 
     def click(self):
+        if self.mode == 0: #files
             item = self.get_selected_items()
             print('items:', item)
             ip = self.mfiles.path + item 
@@ -206,6 +209,12 @@ class App(tk.Frame):
                 print('click')
                 d, f = self.mfiles.setPath(item, False)
                 self.setData(d,f)
+        else: #xdb
+            self.update()
+            ip = self.citem
+            print(ip)
+            if os.path.isfile(ip):
+              subprocess.call(['open',  ip ]) 
                  
 
     def goHome(self):

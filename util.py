@@ -12,16 +12,16 @@ import request
 
 from PIL import ImageTk, Image 
 
-import xdb
+import xdb, xfiles
 
 
 
 class App(tk.Frame):
-    def __init__(self, root,  master, path):
+    def __init__(self, root,  master):
         super().__init__(master)
-        self.pack()
-        self.path = path
-        self.home = path
+        self.pack() 
+        self.mode = 0 #0 files 1 db
+        self.mfiles = xfiles.xfiles('/Volumes/T7/', self)
         self.root = root
         self.master = master
         self.root.title("xmc")
@@ -29,54 +29,63 @@ class App(tk.Frame):
         # self.root.configure(bg="grey")
         self.buttonframe = tk.Frame(master)      
         
+        self.modebutton = tk.Button(self.buttonframe, text="Mode", command=self.changeMode)
+        self.modebutton.grid(row=0, column=0)
+
         self.homebutton = tk.Button(self.buttonframe, text="Home", command=self.goHome)
-        self.homebutton.grid(row=0, column=0)
+        self.homebutton.grid(row=0, column=1)
   
         self.button = tk.Button(self.buttonframe, text="Up", command=self.goUp)
-        self.button.grid(row=0, column=1)
+        self.button.grid(row=0, column=2)
 
         self.dbutton = tk.Button(self.buttonframe, text="db", command=self.checkDb)
-        self.dbutton.grid(row=0, column=2)
+        self.dbutton.grid(row=0, column=3)
 
         self.entrythingy = tk.Entry(self.buttonframe)
-        self.entrythingy.grid(row=0, column=3)
+        self.entrythingy.grid(row=0, column=4)
         self.contents = tk.StringVar() 
-        self.contents.set(path) 
+        self.contents.set(self.mfiles.path) 
         self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
 
 
-        self.topFrame = tk.Frame(master)
+        self.topFrame = tk.Frame(master, width=500, height=800)
         self.posterFrame = tk.Frame( self.topFrame ) 
 
-        img = Image.open("./posters/Iron%20Man%20%202008%20.jpg")
+        # img = Image.open("./posters/Iron%20Man%20%202008%20.jpg")
+        img = Image.open('./posters/test.jpg')
         img = img.resize((300, 420), 0)
         img = ImageTk.PhotoImage(img)
         self.img = img
         self.panel = tk.Label(self.posterFrame, image = self.img, width=300, height=420)
         self.panel.grid(row=0, column=0)
-        
-        self.xlist = tk.Listbox(self.topFrame, font="Helvetica 14", width=60, height=24)  
-        self.xlist.grid(row=0, column=1, padx=2,pady=1)
-        self.xlist.bind('<<ListboxSelect>>', self.onSelect)    
-        self.loadMovers()
+         
+        # Add widgets to tab1 
+        self.listdata = []
+        self.list = tk.Listbox(self.topFrame, font="Helvetica 14", width=60, height=42)   
+        # self.list.pack(padx=20,pady=10, expand=True, fill="both")
+        self.list.grid(row=0, column=1, padx=2,pady=1)
+        self.list.bind('<<ListboxSelect>>', self.onSelect)    
+        if self.mode == 0:
+            a, aa = self.mfiles.showFiles()
+            self.setData(a, aa)
+        else : self.loadMovers()
 
-        self.text_widget = tk.Text(self.posterFrame, width=42, height=10)
+        self.text_widget = tk.Text(self.posterFrame, width=42, height=24)
         self.text_widget.grid(row=1, column=0)
 
         # Insert text into the widget
         self.text_widget.insert("1.0", "This is the first line.\n")
         self.text_widget.insert("2.0", "This is the second line.")
 
+
+        self.info = tk.Text(self.posterFrame, width=42, height=14)
+        self.info.grid(row=2, column=0)
+        self.info.insert("1.0", "This is the first line.\n")
+        self.info.insert("2.0", "This is the second line.")
+
         self.posterFrame.grid(row=0, column=0)
         self.topFrame.pack(pady=1, padx=1)
-      
-        # Add widgets to tab1 
-        self.one = []
-        self.list = tk.Listbox(master, font="Helvetica 14")   
-        self.list.pack(padx=20,pady=10, expand=True, fill="both")
-        self.list.bind('<<ListboxSelect>>', self.onSelect)    
- 
 
         self.buttonframe.pack(pady=10)  #add buttons to the bottom
 
@@ -88,21 +97,60 @@ class App(tk.Frame):
         print("Hi. The current entry content is:",
               self.contents.get())
         
+    def changeMode(self):
+        if self.mode == 0: 
+            self.mode = 1
+            self.entrythingy.config(state="disabled")
+            self.loadMovers()
+        else: 
+            self.mode = 0
+            self.goHome()
+            self.entrythingy.config(state="enabled")
+
+
+    def addMovie(self, r):
+        print('adding movie: ', r)
+        xdb.addMovie(r)
+
     def loadMovers(self):
-        m = xdb.getAllMovies()
-        for i in range( len(m) ):
-            self.xlist.insert(i, m[i])  
+        m = xdb.getAllMovieTitles()
+        print(m)
+        self.setData([], m)
+
+    def reload(self, path):
+        s, a = self.mfiles.getFiles(path)
+        self.setData(s, a)
+
+        
+    def update(self):
+        if self.mode == 0: return
+
+        print('update ui')
+        sl = self.get_selected_items()
+        print(sl)
+        info = xdb.getMovieInfo(sl)
+        print(len(info), info)
+        img = Image.open("./posters/"+info[2])
+        img = img.resize((300, 420), 0)
+        img = ImageTk.PhotoImage(img)
+        self.img = img
+        self.panel.config(image=img)
+        self.text_widget.delete("1.0", "end") 
+        self.text_widget.delete("2.0", "end") 
+        self.text_widget.insert("1.0", info[0] + '\n')
+        self.text_widget.insert("2.0", info[6]+ '\n')
+        self.text_widget.insert("3.0", info[5]+ '\n')
 
     def setCon(self, s):
         self.contents.set(s)
 
-    def setOne(self, s, a):
+    def setData(self, s, a):
         self.list.delete(0, self.list.size())
  
-        self.one = s + a
-        self.one.sort(key=str.casefold)  
-        for i in range(len(self.one)):
-            t = self.one[i]
+        self.listdata = s + a
+        self.listdata.sort(key=str.casefold)  
+        for i in range(len(self.listdata)):
+            t = self.listdata[i]
             # t += self.chop(t)
             self.list.insert(i, t)  
 
@@ -149,36 +197,72 @@ class App(tk.Frame):
 
     def click(self):
             item = self.get_selected_items()
-            ip = self.path +item 
+            print('items:', item)
+            ip = self.mfiles.path + item 
             print(ip)
             if os.path.isfile(ip):
               subprocess.call(['open',  ip ]) 
             else: 
                 print('click')
-                self.setPath()
-                
-    def setPath(self, back=False):
-                if(not back):
-                    self.path += self.get_selected_items() +'/'
-                print(self.path)
-                d, f = getFiles(self.path)
-                self.setOne(d,f) 
-                self.setCon(self.path)
+                d, f = self.mfiles.setPath(item, False)
+                self.setData(d,f)
+                 
 
+    def goHome(self):
+            if self.mode == 0: self.mfiles.goHome()
+            else: self.loadMovers()
+
+    def button_click(self):
+        print("Button clicked!")
+
+    def goUp(self):
+            if self.mode == 0: self.mfiles.goUp()
+            else: self.up()
+
+    def up(self):
+        print('up')
+
+    def checkDb(self):
+
+            if self.mode == 0: 
+                i = self.get_selected_items()
+                q, y = self.chop(i)
+                print(q, y)
+                r = request.qdb(q, y)
+                self.mfiles.checkDb(r, i)
+             
+
+   
     def get_selected_items(self):
         selected_indices = self.list.curselection()
         selected_items = [self.list.get(index) for index in selected_indices]
         print(selected_items)
         if len(selected_items) > 0 : return selected_items[0] 
         else: return ''
-    
+
+    '''    
+         keysym=Down keycode=2097215233 x=110 y=213>
+    <KeyPress event state=Mod3|Mod4 keysym=Up keycode=2113992448 x=110 y=213>
+    <KeyPress event state=Mod3|Mod4 keysym=Right keycode=2080438019 x=110 y=213>
+    <KeyPress event state=Mod3|Mod4 keysym=Left keycode=2063660802
+    '''
+
     def onKeyPress(self, event):
         print(event)
         k = event.keycode
-        if k == 855638143:
+
+        if k == 2113992448:
+            print('arrow up')
+            self.update()
+
+        elif k == 2097215233:
+            print('arrow down')
+            self.update()
+
+        elif k == 855638143:
             #delete
             print('up')
-            self.goUp()
+            self.mfiles.goUp()
         elif k == 603979789 or k == 822083616:
             #enter or space
             print('select')
@@ -189,10 +273,10 @@ class App(tk.Frame):
             self.root.destroy()
         elif k == 67108968: 
             print('home')
-            self.goHome()
+            self.mfiles.goHome()
         elif k == 637534314:
             print('J')
-            self.openDir()
+            self.mfiles.openDir()
         elif k == 671088747: 
             print('K')
         elif k == 620757100: 
@@ -211,7 +295,7 @@ class App(tk.Frame):
 
         elif k == 150995062: 
             print('V')
-            self.openVlc()
+            self.mfiles.openVlc()
 
         elif k == 251658354: 
             r = randint(0,self.list.size())
@@ -229,105 +313,15 @@ class App(tk.Frame):
                 r += '\\'
             r += l
         return r 
-
-    def goHome(self):
-            self.path = self.home
-            self.setPath(True)
-
+ 
     def button_click(self):
         print("Button clicked!")
-
-    def goUp(self):
-            self.path = up(self.path)
-            self.setPath(True)
-   
-    def openDir(self):
-        ip = self.path 
-        print(ip)
-        if not os.path.isfile(ip):
-          subprocess.call(['open',  ip ]) 
-
-    def openVlc(self):
  
-        ip = self.path  + self.get_selected_items()
-        print('vlc :' ,ip)
-        if os.path.isfile(ip):
-          subprocess.call(['open', '-a', 'vlc',  ip ]) 
-
-    def checkDb(self):
-
-        item = self.get_selected_items()
-        q, y =  self.chop(item) 
-        print(q)
-        r = request.qdb(q, y)
-        i = 0
-        rl = 0
-        dl = 0
-        tl = 0
-        for l in r:
-            print(i, l)
-            if 'release_date' in l: rl = i
-            if 'original_title' in l: tl = i
-            if 'overview' in l: dl = i
-            i+=1
-
-        ds = r[dl][11:-2] 
-        ds = ds.replace("'", "")
-        ds = ds.replace('"', '')
-        rr = [r[tl][18:-1], self.path, item ,ds, r[rl][16:-1] ]  #
-        xdb.addMovie(rr)
-        xdb.getAllMovies()
-
-
- 
-def up(p):
-    print(p)
-    l = len(p)
-    r = p[0:l-1].rfind('/')
-    print(r)
-    p = p[0: r+1]
-    print(p)
-    return p
-
-# Get the list of all files and directories
-# p = "/Volumes/T7/Fast and Furious/"
-p = "/Volumes/T7/"
-# path = "/Users/user/Dev/xmc"
-
-def getFiles(path):
-    path =  path
-    files = os.listdir(path)
-    print("Files and directories in '", path, "' :")
-    # prints all files
-    # print(files)
-
-    files = [f for f in files if not (f.count('.srt') or (f[:1]=='.')) ]
-
-    fl = [f for f in files if not os.path.isfile(path+'/'+f)]
-    files = [f for f in files if os.path.isfile(path+'/'+f)]
-
-    print(len(fl))
-    for f in fl: 
-            print(f)
-    print()
-    for f in files: 
-            print(f)
-    return fl, files
-
-def showFiles(openDirs = False):
-    dr, files = getFiles(p);
-    if(openDirs):
-        for d in dr:
-            f = getFiles(p+'/'+d)
-            print(f)
-
-    return dr, files
-
 
  
 imgurl = 'https://image.tmdb.org/t/p/w185/'
 msg = '--- ACME OSX MEDIA CENTER ---'
-dr, files = showFiles()
+# dr, files = showFiles()
 # makeWindow()
 
 
@@ -351,8 +345,7 @@ root.geometry('600x1000')
 # notebook.add(tab3, text="Tab 3")
 
 
-myapp1 = App(root, root, p)  
-myapp1.setOne(dr,files) 
+myapp1 = App(root, root)   
   
 
  

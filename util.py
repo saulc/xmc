@@ -13,22 +13,32 @@ import request
 from PIL import ImageTk, Image 
 
 import xdb, xfiles
+import xattr
 
+import time
+import tkinter.font as tkFont
+ 
+from pymediainfo import MediaInfo
 
 
 class App(tk.Frame):
     def __init__(self, root,  master):
         super().__init__(master)
         self.pack() 
-        self.mode = 0 #0 files 1 db
+        self.mode = 1 #0 files 1 db
         self.mfiles = xfiles.xfiles('/Volumes/T7/', self)
         self.root = root
         self.master = master
         self.root.title("xmc")
         self.citem = ''
 
+
+
+        self.topFrame = tk.Frame(master, width=500, height=800)
+        self.posterFrame = tk.Frame( self.topFrame ) 
+
         # self.root.configure(bg="grey")
-        self.buttonframe = tk.Frame(master)      
+        self.buttonframe = tk.Frame(self.posterFrame)      
         
         self.modebutton = tk.Button(self.buttonframe, text="Mode", command=self.changeMode)
         self.modebutton.grid(row=0, column=0)
@@ -43,15 +53,12 @@ class App(tk.Frame):
         self.dbutton.grid(row=0, column=3)
 
         self.entrythingy = tk.Entry(self.buttonframe)
-        self.entrythingy.grid(row=0, column=4)
+        self.entrythingy.grid(row=1, column=0, columnspan = 4)
         self.contents = tk.StringVar() 
         self.contents.set(self.mfiles.path) 
         self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
 
-
-        self.topFrame = tk.Frame(master, width=500, height=800)
-        self.posterFrame = tk.Frame( self.topFrame ) 
 
         # img = Image.open("./posters/Iron%20Man%20%202008%20.jpg")
         img = Image.open('./posters/test.jpg')
@@ -59,11 +66,11 @@ class App(tk.Frame):
         img = ImageTk.PhotoImage(img)
         self.img = img
         self.panel = tk.Label(self.posterFrame, image = self.img, width=300, height=420)
-        self.panel.grid(row=0, column=0)
+        self.panel.grid(row=1, column=0)
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame, font="Helvetica 14", width=60, height=42)   
+        self.list = tk.Listbox(self.topFrame, font="Rockwell 14", width=60, height=42)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.grid(row=0, column=1, padx=2,pady=1)
         self.list.bind('<<ListboxSelect>>', self.onSelect)    
@@ -72,27 +79,44 @@ class App(tk.Frame):
             self.setData(a, aa)
         else : self.loadMovers()
 
-        self.text_widget = tk.Text(self.posterFrame, width=42, height=24)
-        self.text_widget.grid(row=1, column=0)
+        self.text_widget = tk.Text(self.posterFrame,wrap='word', width=42, height=24)
+        self.text_widget.grid(row=2, column=0)
 
         # Insert text into the widget
         self.text_widget.insert("1.0", "This is the first line.\n")
         self.text_widget.insert("2.0", "This is the second line.")
 
 
-        self.info = tk.Text(self.posterFrame, width=42, height=14)
-        self.info.grid(row=2, column=0)
-        self.info.insert("1.0", "This is the first line.\n")
+        self.info = tk.Text(self.posterFrame,wrap='word', width=42, height=7)
+        self.info.grid(row=3, column=0)
+        lib = str(len( xdb.getAllMovieTitles())) + ' movies in library.'
+        self.info.insert("1.0", lib + "\n")
         self.info.insert("2.0", "This is the second line.")
+
+        self.lb = tk.Label(self.posterFrame, width=7, height=1,   font='Rockwell 46') 
+        self.lb.grid(row=0, column=0) 
+        self.cb()
 
         self.posterFrame.grid(row=0, column=0)
         self.topFrame.pack(pady=1, padx=1)
 
-        self.buttonframe.pack(pady=10)  #add buttons to the bottom
-
+        self.buttonframe.grid(row=4, column=0) #add buttons to the bottom
+ 
+         
+        families = tkFont.families()
+        print(families)
 
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
+
+    def cb(self, event=None):
+        """Display the time every second."""
+        # t = time.strftime('%X')
+
+        t = time.strftime("%I:%M:%S")
+        self.lb['text'] = t
+  
+        self.lb.after(1000, self.cb)
 
     def print_contents(self, event):
         print("Hi. The current entry content is:",
@@ -123,14 +147,18 @@ class App(tk.Frame):
         self.setData(s, a)
 
         
+    def onSelect(self, event):
+        # Use the event argument if needed
+        super.onSelect()
+
     def update(self):
         if self.mode == 0: return
 
         print('update ui')
-        sl = self.get_selected_items()
-        print(sl)
+        sl = self.get_selected_items()[0]
+        # print(sl)
         info = xdb.getMovieInfo(sl)
-        print(len(info), info)
+        print('info', info)
         img = Image.open("./posters/"+info[2])
         img = img.resize((300, 420), 0)
         img = ImageTk.PhotoImage(img)
@@ -140,8 +168,20 @@ class App(tk.Frame):
         self.text_widget.delete("2.0", "end") 
         self.text_widget.insert("1.0", info[0] + '\n')
         self.text_widget.insert("2.0", info[6]+ '\n')
-        self.text_widget.insert("3.0", info[5]+ '\n')
-        self.citem = info[3] + info[4]
+
+        self.citem = info[3] + info[4] #save the current item path
+        duration, dim = self.get_video_metadata(self.citem)
+        print('wtf', duration, dim)
+        vi = str(dim[0]) + 'x' + str(dim[1]) + ' ' + str(duration) + ' secs, ' + str(duration//60) + ' mins \n' + str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins'
+        self.text_widget.insert("3.0", vi+ '\n')
+        self.text_widget.insert("5.0", info[5]+ '\n')
+
+
+        # att = xattr.listxattr(self.citem )  
+        # with open(att[1], "r") as file:
+        #     content = file.read()
+        #     print(content)
+        # print(res)
 
     def setCon(self, s):
         self.contents.set(s)
@@ -187,6 +227,24 @@ class App(tk.Frame):
         return  r, y
 
 
+    def get_video_metadata(self, video_path):
+        """Retrieves duration and resolution of a video file."""
+        media_info = MediaInfo.parse(video_path)
+        print('checking meta data', media_info.tracks)
+        if media_info.tracks:
+            for track in media_info.tracks:
+                print(track)
+                if "track_type='Video'" in str(track):
+                    print('found video track', track.duration )
+                    d = track.duration
+                    if '.' in str(d): d = str(d).split('.')[0]
+                    duration = int(d) // 1000  # Duration in seconds
+                    width = track.width
+                    height = track.height
+                    return duration, (width, height)
+        return None, None
+
+
     def onSelect(self):
         print('on select')
 
@@ -196,10 +254,13 @@ class App(tk.Frame):
         if event.num == 3:
             print("RIGHT CLICK")
             self.click()
+        elif event.num == 1:
+            print('left click')
+            self.update()
 
     def click(self):
         if self.mode == 0: #files
-            item = self.get_selected_items()
+            item = self.get_selected_items()[0]
             print('items:', item)
             ip = self.mfiles.path + item 
             print(ip)
@@ -235,18 +296,23 @@ class App(tk.Frame):
 
             if self.mode == 0: 
                 i = self.get_selected_items()
-                q, y = self.chop(i)
-                print(q, y)
-                r = request.qdb(q, y)
-                self.mfiles.checkDb(r, i)
-             
+                print(i)
+                for m in i:
+                    q, y = self.chop(m)
+                    print(q, y)
+                    r = request.qdb(q, y)
+                    self.mfiles.checkDb(r, m)
+            else:
+                i = self.get_selected_items()[0]
+                xdb.deleteMovie(i)
+                self.loadMovers()
 
    
     def get_selected_items(self):
         selected_indices = self.list.curselection()
         selected_items = [self.list.get(index) for index in selected_indices]
         print(selected_items)
-        if len(selected_items) > 0 : return selected_items[0] 
+        if len(selected_items) > 0 : return selected_items 
         else: return ''
 
     '''    
@@ -261,8 +327,16 @@ class App(tk.Frame):
         k = event.keycode
 
         if k == 2113992448:
-            print('arrow up')
+            print('arrow up', self.list.curselection() )
+            if self.list.curselection()[0] == 0 : 
+                print('top of list.')
+                self.list.selection_clear(0, "end")
+                # self.list.selection_anchor(len(self.listdata)-1)
+                self.list.selection_set(len(self.listdata)-1) 
+                self.list.set("active")
+            print( self.list.curselection())
             self.update()
+
 
         elif k == 2097215233:
             print('arrow down')

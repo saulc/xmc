@@ -30,30 +30,39 @@ class App(tk.Frame):
         self.root = root
         self.master = master
         self.root.title("xmc")
+      
         self.citem = ''
 
-
+        self.root.geometry('800x1080')
+        self.root.configure(background="black" )
+        self.root.wm_attributes('-alpha', 0.8)
 
         self.topFrame = tk.Frame(master, width=500, height=800)
         self.posterFrame = tk.Frame( self.topFrame ) 
 
         # self.root.configure(bg="grey")
         self.buttonframe = tk.Frame(self.posterFrame)      
+
+        self.rb = 1
+        self.r1 = tk.Radiobutton(self.buttonframe,background="black" , text="Movies", variable=self.rb, value=1, command=self.r)
+        self.r1.grid(row=0, column=0)
+        self.r2 = tk.Radiobutton(self.buttonframe,background="black" , text="Tv/Series", variable=self.rb, value=2, command=self.rr)
+        self.r2.grid(row=0, column=1)
         
-        self.modebutton = tk.Button(self.buttonframe, text="Mode", command=self.changeMode)
-        self.modebutton.grid(row=0, column=0)
+        self.modebutton = tk.Button(self.buttonframe,highlightbackground="black" , text="Mode", command=self.changeMode)
+        self.modebutton.grid(row=1, column=0)
 
-        self.homebutton = tk.Button(self.buttonframe, text="Home", command=self.goHome)
-        self.homebutton.grid(row=0, column=1)
+        self.homebutton = tk.Button(self.buttonframe, highlightbackground="black" ,text="Home", command=self.goHome)
+        self.homebutton.grid(row=1, column=1)
   
-        self.button = tk.Button(self.buttonframe, text="Up", command=self.goUp)
-        self.button.grid(row=0, column=2)
+        self.button = tk.Button(self.buttonframe, highlightbackground="black" ,text="Up", command=self.goUp)
+        self.button.grid(row=1, column=2)
 
-        self.dbutton = tk.Button(self.buttonframe, text="db", command=self.checkDb)
-        self.dbutton.grid(row=0, column=3)
+        self.dbutton = tk.Button(self.buttonframe,highlightbackground="black" , text="db", command=self.checkDb)
+        self.dbutton.grid(row=1, column=3)
 
-        self.entrythingy = tk.Entry(self.buttonframe)
-        self.entrythingy.grid(row=1, column=0, columnspan = 4)
+        self.entrythingy = tk.Entry(self.buttonframe, background="black" )
+        self.entrythingy.grid(row=2, column=0, columnspan = 4)
         self.contents = tk.StringVar() 
         self.contents.set(self.mfiles.path) 
         self.entrythingy["textvariable"] = self.contents 
@@ -70,9 +79,10 @@ class App(tk.Frame):
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame, font="Rockwell 14", width=60, height=42)   
+        self.list = tk.Listbox(self.topFrame, selectbackground='#ff0066', font="Rockwell 14", width=60, height=42)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
-        self.list.grid(row=0, column=1, padx=2,pady=1)
+        self.list.configure(background="black", foreground="white")
+        self.list.grid(row=0, column=1, padx=8,pady=1)
         self.list.bind('<<ListboxSelect>>', self.onSelect)    
         if self.mode == 0:
             a, aa = self.mfiles.showFiles()
@@ -80,6 +90,7 @@ class App(tk.Frame):
         else : self.loadMovers()
 
         self.text_widget = tk.Text(self.posterFrame,wrap='word', width=42, height=24)
+        self.text_widget.configure(background="black", foreground="white", highlightbackground="black" )
         self.text_widget.grid(row=2, column=0)
 
         # Insert text into the widget
@@ -88,18 +99,24 @@ class App(tk.Frame):
 
 
         self.info = tk.Text(self.posterFrame,wrap='word', width=42, height=7)
+        self.info.configure(background="black", foreground="white", highlightbackground="black" )
         self.info.grid(row=3, column=0)
         lib = str(len( xdb.getAllMovieTitles())) + ' movies in library.'
         self.info.insert("1.0", lib + "\n")
         self.info.insert("2.0", "This is the second line.")
 
+        #time
         self.lb = tk.Label(self.posterFrame, width=7, height=1,   font='Rockwell 46') 
+        self.lb.configure(background="black", foreground="grey")
         self.lb.grid(row=0, column=0) 
         self.cb()
 
+        self.posterFrame.configure(background="systemTransparent" )
         self.posterFrame.grid(row=0, column=0)
-        self.topFrame.pack(pady=1, padx=1)
+        self.topFrame.configure(background="systemTransparent" )
+        self.topFrame.pack(pady=23, padx=5)
 
+        self.buttonframe.configure(background="black" )
         self.buttonframe.grid(row=4, column=0) #add buttons to the bottom
  
          
@@ -108,6 +125,19 @@ class App(tk.Frame):
 
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
+
+  
+    def r(self): 
+        self.rb = 1 
+        self.sel()
+
+    def rr(self): 
+        self.rb = 2 
+        self.sel()
+
+    def sel(self): 
+        print('Raido button clicked', self.rb)
+
 
     def cb(self, event=None):
         """Display the time every second."""
@@ -140,7 +170,9 @@ class App(tk.Frame):
     def loadMovers(self):
         m = xdb.getAllMovieTitles()
         print(m)
-        self.setData([], m)
+        self.setData([], m) 
+        self.list.focus_set()
+        self.setSelection(1)
 
     def reload(self, path):
         s, a = self.mfiles.getFiles(path)
@@ -191,6 +223,9 @@ class App(tk.Frame):
  
         self.listdata = s + a
         self.listdata.sort(key=str.casefold)  
+        l = str(len(self.listdata))
+        self.listdata.insert(0,l + ' Movers in library')
+        self.listdata.append(l + ' end of list')
         for i in range(len(self.listdata)):
             t = self.listdata[i]
             # t += self.chop(t)
@@ -199,32 +234,6 @@ class App(tk.Frame):
         if self.list.size() > 0:
             self.list.selection_set(0)
 
-    def chop(self, s):
-        print(s)
-        r = ''
-        rr = [] 
-        y = 0
-        for t in s.split(' '):
-            rr += t.split('.')
-        print(rr)
-        # if len(s) > 1:
-        for i in range(len(rr)):
-            print(str(i) + ' ' + rr[i])
-            try:
-                if rr[i][0]=='(': break
-                if int(rr[i]): 
-                    if len(rr[i]) == 4 : 
-                        y = rr[i]
-                        break
-            except Exception as e:
-                print(e)
-
-            if i > 0: r += '%20'
-            r +=  rr[i]
-            # r += rr[i] # + ' '
-        # else: s = s[0]
-        print('query' , r)
-        return  r, y
 
 
     def get_video_metadata(self, video_path):
@@ -256,6 +265,7 @@ class App(tk.Frame):
             self.click()
         elif event.num == 1:
             print('left click')
+            print(event)
             self.update()
 
     def click(self):
@@ -297,11 +307,11 @@ class App(tk.Frame):
             if self.mode == 0: 
                 i = self.get_selected_items()
                 print(i)
-                for m in i:
-                    q, y = self.chop(m)
-                    print(q, y)
-                    r = request.qdb(q, y)
-                    self.mfiles.checkDb(r, m)
+                for m in i: 
+                    r = request.qdb(m, self.rb==2 )
+                    rr = self.mfiles.checkDb(r, m)
+                    self.addMovie(rr)
+                    request.getPoster(rr[2])
             else:
                 i = self.get_selected_items()[0]
                 xdb.deleteMovie(i)
@@ -322,24 +332,40 @@ class App(tk.Frame):
     <KeyPress event state=Mod3|Mod4 keysym=Left keycode=2063660802
     '''
 
+    def setSelection(self, a):
+
+        self.list.selection_clear(0, "end") 
+        # a = self.list.get("active")
+        self.list.selection_set(a)  
+        self.list.selection_anchor(a)
+        self.list.activate(a)
+        self.list.see(a) 
+
+
     def onKeyPress(self, event):
         print(event)
         k = event.keycode
 
         if k == 2113992448:
             print('arrow up', self.list.curselection() )
-            if self.list.curselection()[0] == 0 : 
-                print('top of list.')
-                self.list.selection_clear(0, "end")
-                # self.list.selection_anchor(len(self.listdata)-1)
-                self.list.selection_set(len(self.listdata)-1) 
-                self.list.set("active")
+            if self.list.curselection()[0] <= 0 : 
+                print('top of list.') 
+                a = len(self.listdata)-2
+                self.setSelection(a)
+                
+            # else:
+
+            #     a = self.list.get("active")
+            #     self.setSelection(a)
             print( self.list.curselection())
             self.update()
 
 
         elif k == 2097215233:
-            print('arrow down')
+            print('arrow down') 
+            if self.list.curselection()[0] == len(self.listdata)-1 : 
+                print('end of list.')  
+                self.setSelection(1)
             self.update()
 
         elif k == 855638143:
@@ -359,7 +385,10 @@ class App(tk.Frame):
             self.mfiles.goHome()
         elif k == 637534314:
             print('J')
-            self.mfiles.openDir()
+            if self.mode == 0: self.mfiles.openDir(self.mfiles.path + self.get_selected_items()[0])
+            else:  
+                self.mfiles.openDir(self.citem)
+
         elif k == 671088747: 
             print('K')
         elif k == 620757100: 
@@ -378,7 +407,9 @@ class App(tk.Frame):
 
         elif k == 150995062: 
             print('V')
-            self.mfiles.openVlc()
+            if self.mode == 0:
+                self.mfiles.openVlc(self.mfiles.path+self.get_selected_items()[0])
+            self.mfiles.openVlc(self.citem)
 
         elif k == 251658354: 
             r = randint(0,self.list.size())
@@ -410,8 +441,7 @@ msg = '--- ACME OSX MEDIA CENTER ---'
 
 
 root = tk.Tk()
-root.config(bg='black')
-root.geometry('600x1000')
+# root.config(bg='black')
  
 
 # # Create notebook widget

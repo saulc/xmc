@@ -37,17 +37,19 @@ class App(tk.Frame):
         self.root.configure(background="black" )
         self.root.wm_attributes('-alpha', 0.8)
 
-        self.topFrame = tk.Frame(master, width=500, height=800)
+        self.topFrame = tk.Frame(master) #, width=500, height=800)
         self.posterFrame = tk.Frame( self.topFrame ) 
 
         # self.root.configure(bg="grey")
         self.buttonframe = tk.Frame(self.posterFrame)      
 
-        self.rb = 1
-        self.r1 = tk.Radiobutton(self.buttonframe,background="black" , text="Movies", variable=self.rb, value=1, command=self.r)
+        self.rb = tk.IntVar()
+        self.rb.set(1)
+        self.r1 = tk.Radiobutton(self.buttonframe,background="black" , text="Movies", variable=self.rb, value=1, command=self.sel)
         self.r1.grid(row=0, column=0)
-        self.r2 = tk.Radiobutton(self.buttonframe,background="black" , text="Tv/Series", variable=self.rb, value=2, command=self.rr)
+        self.r2 = tk.Radiobutton(self.buttonframe,background="black" , text="Tv/Series", variable=self.rb, value=2, command=self.sel)
         self.r2.grid(row=0, column=1)
+
         
         self.modebutton = tk.Button(self.buttonframe,highlightbackground="black" , text="Mode", command=self.changeMode)
         self.modebutton.grid(row=1, column=0)
@@ -114,7 +116,7 @@ class App(tk.Frame):
         self.posterFrame.configure(background="systemTransparent" )
         self.posterFrame.grid(row=0, column=0)
         self.topFrame.configure(background="systemTransparent" )
-        self.topFrame.pack(pady=23, padx=5)
+        self.topFrame.pack(pady=0, padx=8)
 
         self.buttonframe.configure(background="black" )
         self.buttonframe.grid(row=4, column=0) #add buttons to the bottom
@@ -125,18 +127,19 @@ class App(tk.Frame):
 
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
+        self.update()
 
   
-    def r(self): 
-        self.rb = 1 
-        self.sel()
+    # def r(self): 
+    #     self.rb = 1 
+    #     self.sel()
 
-    def rr(self): 
-        self.rb = 2 
-        self.sel()
+    # def rr(self): 
+    #     self.rb = 2 
+    #     self.sel()
 
     def sel(self): 
-        print('Raido button clicked', self.rb)
+        print('Raido button clicked', self.rb.get())
 
 
     def cb(self, event=None):
@@ -199,12 +202,16 @@ class App(tk.Frame):
         self.text_widget.delete("1.0", "end") 
         self.text_widget.delete("2.0", "end") 
         self.text_widget.insert("1.0", info[0] + '\n')
-        self.text_widget.insert("2.0", info[6]+ '\n')
+ 
+        dim = str((info[8], info[9]))
+        if info[8] == 1920 : dim += ' 1080p'
+        elif info[8] == 1280 : dim += ' 720p'
+        self.text_widget.insert("2.0", info[6]+ ' ' + dim + '\n')
 
-        self.citem = info[3] + info[4] #save the current item path
-        duration, dim = self.get_video_metadata(self.citem)
+        duration = info[7]
         print('wtf', duration, dim)
-        vi = str(dim[0]) + 'x' + str(dim[1]) + ' ' + str(duration) + ' secs, ' + str(duration//60) + ' mins \n' + str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins'
+        vi =   str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins, '
+        vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs \n'
         self.text_widget.insert("3.0", vi+ '\n')
         self.text_widget.insert("5.0", info[5]+ '\n')
 
@@ -308,8 +315,15 @@ class App(tk.Frame):
                 i = self.get_selected_items()
                 print(i)
                 for m in i: 
-                    r = request.qdb(m, self.rb==2 )
+                    r = request.qdb(m, self.rb.get()==2 )
                     rr = self.mfiles.checkDb(r, m)
+
+                    path = rr[3] + rr[4] #save the current item path
+                    duration, dim = self.get_video_metadata(path)
+                    rr.append(str(duration))
+                    rr.append(str(dim[0]))
+                    rr.append(str(dim[1]))
+                    print(path, duration, dim)
                     self.addMovie(rr)
                     request.getPoster(rr[2])
             else:

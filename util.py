@@ -73,9 +73,9 @@ class App(tk.Frame):
         self.entrythingy.bind('<Key-Return>', self.print_contents)
 
         self.progress = 0.
-        self.progressVar = tk.DoubleVar()
-        self.progressVar.set(self.progress)
-        self.progressBar = ttk.Progressbar(self.posterFrame,variable=self.progressVar, maximum=100)
+        # self.progressVar = tk.DoubleVar()
+        # self.progressVar.set(self.progress)
+        self.progressBar = ttk.Progressbar(self.posterFrame, length=200, mode="determinate")
         self.progressBar.grid(row=5, column=0)
 
 
@@ -151,6 +151,10 @@ class App(tk.Frame):
         if self.mode == 1:
             self.loadMovers()
 
+    def updateProgress(self, value):
+        print('update progress', value)
+        self.progressBar['value'] = value
+        self.root.update_idletasks() # Ensure the GUI updates
 
     def cb(self, event=None):
         """Display the time every second."""
@@ -222,10 +226,17 @@ class App(tk.Frame):
         self.text_widget.delete("1.0", "end") 
         self.text_widget.delete("2.0", "end") 
         self.text_widget.insert("1.0", info[0] + '\n')
- 
+
+        self.citem = info[3] + info[4] 
+        fs = os.path.getsize(self.citem)
+        print(fs, 2**30)
+        fs /= (2**30)
+
         dim = str((info[8], info[9]))
         if info[8] == 1920 : dim += ' 1080p'
         elif info[8] == 1280 : dim += ' 720p'
+        dim+= ' ' + info[4][-3:] + ' ' 
+        dim += f" {fs:.2f} GB"
         self.text_widget.insert("2.0", info[6]+ ' ' + dim + '\n')
 
         duration = info[7]
@@ -236,7 +247,6 @@ class App(tk.Frame):
         self.text_widget.insert("5.0", info[5]+ '\n')
 
         #set current item path to use later
-        self.citem = info[3] + info[4] 
         # att = xattr.listxattr(self.citem )  
         # with open(att[1], "r") as file:
         #     content = file.read()
@@ -250,7 +260,8 @@ class App(tk.Frame):
         self.list.delete(0, self.list.size())
  
         self.listdata = s + a
-        self.listdata.sort(key=str.casefold)  
+        if self.mode == 0: #sort files only
+            self.listdata.sort(key=str.casefold)  
         l = str(len(self.listdata))
         if self.mode == 0: 
             self.listdata.insert(0,'  ~ ' + l + ' items in directory ~  ')
@@ -274,16 +285,28 @@ class App(tk.Frame):
         """Retrieves duration and resolution of a video file."""
         media_info = MediaInfo.parse(video_path)
         print('checking meta data', media_info.tracks)
+        width = 0
+        height = 0
         if media_info.tracks:
             for track in media_info.tracks:
                 print(track)
                 if "track_type='Video'" in str(track):
                     print('found video track', track.duration )
                     d = track.duration
-                    if '.' in str(d): d = str(d).split('.')[0]
-                    duration = int(d) // 1000  # Duration in seconds
                     width = track.width
                     height = track.height
+                    print('meta data:' , d, width, height)
+                    if d != None:
+                        if '.' in str(d): d = str(d).split('.')[0]
+                        duration = int(d) // 1000  # Duration in seconds
+                        return duration, (width, height)
+                elif "track_type='Audio'" in str(track):
+                    print('chekcing autio track for duration.')
+                    d = track.duration
+                    print('meta data:' , d, width, height)
+                    if d == None: d = 0
+                    if '.' in str(d): d = str(d).split('.')[0]
+                    duration = int(d) // 1000  # Duration in seconds
                     return duration, (width, height)
         return None, None
 
@@ -386,6 +409,7 @@ class App(tk.Frame):
 
     def addItemsToDb(self, q):
         #q = (query, filename)
+        nr = []
         if q == None:
             i = self.get_selected_items()
             mi = self.getDirFiles(i) 
@@ -407,9 +431,10 @@ class App(tk.Frame):
                 print(isvid, m)
                 print('checking item', m)
 
-                self.progress = 100* n / (len(i))
+                self.progress = 100* n // (len(i))
                 n += 1
-                self.progressVar.set(self.progress)
+                # self.progressVar.set(self.progress)
+                self.updateProgress(self.progress)
                 tv = self.rb.get()==2 
                 if q != None:
                     r = request.qdb(q[0], tv)
@@ -436,10 +461,16 @@ class App(tk.Frame):
                     print(epi)
                     return
                 rr = request.getInfo(r, '', m)
+                print('response check',rr)
+                if len(rr) > 0 and rr[0] == '' : 
+                    nr.append(rr[4])
+                    continue
                 if q != None: 
                     rr[3] = self.mfiles.path
                     rr[4] = q[1] #add the file name in case we used a custom query
                 path = rr[3] + rr[4] #save the current item path
+
+
                 print('path  ---:', path)
                 duration, dim = self.get_video_metadata(path) #add video info to db
                 rr.append(str(duration))
@@ -449,9 +480,10 @@ class App(tk.Frame):
                 if self.rb.get() == 1:
                     self.addMovie(rr)
                 else: self.addTv(rr)
-                request.getPoster(rr[2])
-                self.progress=0
-                self.progressVar.set(self.progress)
+                request.getPoster(rr[2]) 
+
+        print('no reponse:', len(nr), nr)
+        return nr
 
     def checkDb(self, q = None):
        
@@ -586,12 +618,14 @@ class App(tk.Frame):
             self.mfiles.openVlc(self.citem)
 
         elif k == 251658354: 
-            r = randint(0,self.list.size())
+            r = randint(1,self.list.size()-1)
             print('R ', r)   
             #random vid
-            self.list.selection_clear(0) 
-            self.list.selection_set(r) 
-            self.click()
+            # self.list.selection_clear(0) 
+            # self.list.selection_set(r) 
+            self.setSelection(r)
+            self.update()
+            # self.click()
 
     def form(self, s):
         r = ''

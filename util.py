@@ -4,6 +4,8 @@ from random import randint
 import tkinter as tk
 from tkinter import ttk
 
+from tkinter import simpledialog
+
 import subprocess
 
 import urllib.request
@@ -14,7 +16,7 @@ from PIL import ImageTk, Image
 
 import xdb, xfiles
 import xattr
-
+import re
 import time
 import tkinter.font as tkFont
  
@@ -25,7 +27,7 @@ class App(tk.Frame):
     def __init__(self, root,  master):
         super().__init__(master)
         self.pack() 
-        self.mode = 1 #0 files 1 db
+        self.mode = 0 #0 files 1 db
         self.mfiles = xfiles.xfiles('/Volumes/T7/', self)
         self.root = root
         self.master = master
@@ -70,6 +72,12 @@ class App(tk.Frame):
         self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
 
+        self.progress = 0.
+        self.progressVar = tk.DoubleVar()
+        self.progressVar.set(self.progress)
+        self.progressBar = ttk.Progressbar(self.posterFrame,variable=self.progressVar, maximum=100)
+        self.progressBar.grid(row=5, column=0)
+
 
         # img = Image.open("./posters/Iron%20Man%20%202008%20.jpg")
         img = Image.open('./posters/test.jpg')
@@ -81,11 +89,12 @@ class App(tk.Frame):
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame, selectbackground='#ff0066', font="Rockwell 14", width=60, height=42)   
+        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', font="Herculanum 14", width=60, height=42)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.configure(background="black", foreground="white")
+ 
         self.list.grid(row=0, column=1, padx=8,pady=1)
-        self.list.bind('<<ListboxSelect>>', self.onSelect)    
+        self.list.bind('<<ListboxSelect>>', self.onListSelcted)    
         if self.mode == 0:
             a, aa = self.mfiles.showFiles()
             self.setData(a, aa)
@@ -108,7 +117,7 @@ class App(tk.Frame):
         self.info.insert("2.0", "This is the second line.")
 
         #time
-        self.lb = tk.Label(self.posterFrame, width=7, height=1,   font='Rockwell 46') 
+        self.lb = tk.Label(self.posterFrame, width=7, height=1,   font='Herculanum 46') 
         self.lb.configure(background="black", foreground="grey")
         self.lb.grid(row=0, column=0) 
         self.cb()
@@ -120,26 +129,27 @@ class App(tk.Frame):
 
         self.buttonframe.configure(background="black" )
         self.buttonframe.grid(row=4, column=0) #add buttons to the bottom
- 
+
+        self.selected = 1
+        self.suffixes = ('.mp4', '.avi', '.mkv')
          
         families = tkFont.families()
         print(families)
 
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
-        self.update()
+        # root.bind("<KeyRelease>", self.onKeyUp)
+        self.changeMode()
+        self.update() 
 
   
-    # def r(self): 
-    #     self.rb = 1 
-    #     self.sel()
-
-    # def rr(self): 
-    #     self.rb = 2 
-    #     self.sel()
+    def onListSelcted(self, event):
+        print('list selected', event)
 
     def sel(self): 
         print('Raido button clicked', self.rb.get())
+        if self.mode == 1:
+            self.loadMovers()
 
 
     def cb(self, event=None):
@@ -163,15 +173,23 @@ class App(tk.Frame):
         else: 
             self.mode = 0
             self.goHome()
-            self.entrythingy.config(state="enabled")
+            self.entrythingy.config(state="normal")
 
+
+    def addTv(self, r):
+        print('adding tv: ', r)
+        #check if tv show exisits.
+        #if it does not add it. them add the eps
+        xdb.addTv(r)
 
     def addMovie(self, r):
         print('adding movie: ', r)
         xdb.addMovie(r)
 
     def loadMovers(self):
-        m = xdb.getAllMovieTitles()
+        if self.rb.get() == 1: 
+            m = xdb.getAllMovieTitles()
+        else: m = xdb.getAllTvNames()
         print(m)
         self.setData([], m) 
         self.list.focus_set()
@@ -182,16 +200,18 @@ class App(tk.Frame):
         self.setData(s, a)
 
         
-    def onSelect(self, event):
-        # Use the event argument if needed
-        super.onSelect()
+
+    # def onSelect(self, event):
+    #     # Use the event argument if needed
+    #     super.onSelect()
 
     def update(self):
         if self.mode == 0: return
 
         print('update ui')
         sl = self.get_selected_items()[0]
-        # print(sl)
+        print(sl)
+        if self.rb.get() == 2 or 'end of list' in sl: return
         info = xdb.getMovieInfo(sl)
         print('info', info)
         img = Image.open("./posters/"+info[2])
@@ -215,7 +235,8 @@ class App(tk.Frame):
         self.text_widget.insert("3.0", vi+ '\n')
         self.text_widget.insert("5.0", info[5]+ '\n')
 
-
+        #set current item path to use later
+        self.citem = info[3] + info[4] 
         # att = xattr.listxattr(self.citem )  
         # with open(att[1], "r") as file:
         #     content = file.read()
@@ -231,8 +252,14 @@ class App(tk.Frame):
         self.listdata = s + a
         self.listdata.sort(key=str.casefold)  
         l = str(len(self.listdata))
-        self.listdata.insert(0,l + ' Movers in library')
-        self.listdata.append(l + ' end of list')
+        if self.mode == 0: 
+            self.listdata.insert(0,'  ~ ' + l + ' items in directory ~  ')
+            self.listdata.append('  ~ ' + l + ' end of list ~  ')
+        else:
+            e = ' Movers in library ~  '
+            if self.rb.get() == 2: e = e.replace('Movers', 'Tv/Series')
+            self.listdata.insert(0,'  ~ ' + l + e)
+            self.listdata.append('  ~ ' + l + ' end of list ~  ')
         for i in range(len(self.listdata)):
             t = self.listdata[i]
             # t += self.chop(t)
@@ -260,8 +287,8 @@ class App(tk.Frame):
                     return duration, (width, height)
         return None, None
 
-
-    def onSelect(self):
+    @staticmethod
+    def onSelect(arg):
         print('on select')
 
     def click_handler(self, event):
@@ -277,7 +304,8 @@ class App(tk.Frame):
 
     def click(self):
         if self.mode == 0: #files
-            item = self.get_selected_items()[0]
+            self.selected = self.get_selected_items()
+            item = self.selected[0]
             print('items:', item)
             ip = self.mfiles.path + item 
             print(ip)
@@ -309,24 +337,127 @@ class App(tk.Frame):
     def up(self):
         print('up')
 
-    def checkDb(self):
+    def getDirFiles(self, i, path=None): 
+        mi = []
+        ri = i.copy()
+        #check for directories add items to q
+        for f in i:
+            print('checking item:',f, path)
+            if path==None:
+                p  = self.mfiles.path+f
+            else: p = path
+            print('checking path:',p)
+            if not os.path.isfile(p):
+                mf, ff = self.mfiles.getFiles(p)
+                mi.append((p,mf))
+                mi.append((p,ff))
+                ri.remove(f) 
+                # ri.extend(ff)
+                print(mf)
+        print(len(mi), mi)
+        if len(mi) >0:
 
-            if self.mode == 0: 
-                i = self.get_selected_items()
-                print(i)
-                for m in i: 
-                    r = request.qdb(m, self.rb.get()==2 )
-                    rr = self.mfiles.checkDb(r, m)
+            for mm in mi:
+                for f in mm[1]:
+                    print('  checking item:',f)
+                    fp = mm[0]+'/'+f
+                    print('  checking item:',fp)
+                    md = []
+                    if not os.path.isfile(str(fp)):
+                        md = self.getDirFiles([f+'/'], fp)
+                        print(md)
+                        mdd = [ k if k.endswith(self.suffixes) else None for k in md]
+                        mz = []
+                        for k in mdd:
+                            print(k)
+                            if k != None:
+                                if k is list:
+                                    mz.extend(k)
+                                else:
+                                    mz.append(k)
 
-                    path = rr[3] + rr[4] #save the current item path
-                    duration, dim = self.get_video_metadata(path)
-                    rr.append(str(duration))
-                    rr.append(str(dim[0]))
-                    rr.append(str(dim[1]))
-                    print(path, duration, dim)
+                        print('zzz', mz)
+                        ri.extend(mz) 
+                    else:
+                        print('adding item:', fp)
+                        ri.append(fp) 
+        return ri
+
+
+    def addItemsToDb(self, q):
+        #q = (query, filename)
+        if q == None:
+            i = self.get_selected_items()
+            mi = self.getDirFiles(i) 
+            i.extend(mi)
+
+
+            print('items:', i) 
+
+        else: 
+            #custom query one file at a time only!
+            i = [self.mfiles.path + q[1]]
+            print('query db', i)
+        # print(i)
+        n = 0
+        for m in i: 
+
+            isvid = m.endswith(self.suffixes) 
+            if  os.path.isfile(m) and isvid: 
+                print(isvid, m)
+                print('checking item', m)
+
+                self.progress = 100* n / (len(i))
+                n += 1
+                self.progressVar.set(self.progress)
+                tv = self.rb.get()==2 
+                if q != None:
+                    r = request.qdb(q[0], tv)
+                else: r = request.qdb(m.split('/')[-1], tv)
+                if tv :  
+                    print(r) 
+                    sn = ''
+                    sid = ''
+                    for l in r:
+                        if 'id' in l: sid = l[4:] 
+                        elif 'original_name' in l: sn = l[16:-1] 
+                    print('Show: ', sn, sid)
+                    txt = i
+                    if q !=  None: txt = q[1]
+                    x = re.search(r"S(\d+)",txt)
+                    y = re.search(r"E(\d+)",txt) 
+                    sea = x[0][1:]
+                    ep = y[0][1:] 
+
+                    print('season: ' , sea, ' show ep:', ep)
+                    sea = int(sea)
+                    ep = int(ep)
+                    epi = request.tvep(sid, sea, ep)
+                    print(epi)
+                    return
+                rr = request.getInfo(r, '', m)
+                if q != None: 
+                    rr[3] = self.mfiles.path
+                    rr[4] = q[1] #add the file name in case we used a custom query
+                path = rr[3] + rr[4] #save the current item path
+                print('path  ---:', path)
+                duration, dim = self.get_video_metadata(path) #add video info to db
+                rr.append(str(duration))
+                rr.append(str(dim[0]))
+                rr.append(str(dim[1]))
+                print(path, duration, dim)
+                if self.rb.get() == 1:
                     self.addMovie(rr)
-                    request.getPoster(rr[2])
-            else:
+                else: self.addTv(rr)
+                request.getPoster(rr[2])
+                self.progress=0
+                self.progressVar.set(self.progress)
+
+    def checkDb(self, q = None):
+       
+        if self.mode == 0: 
+            self.addItemsToDb(q)
+        else:
                 i = self.get_selected_items()[0]
                 xdb.deleteMovie(i)
                 self.loadMovers()
@@ -336,15 +467,24 @@ class App(tk.Frame):
         selected_indices = self.list.curselection()
         selected_items = [self.list.get(index) for index in selected_indices]
         print(selected_items)
-        if len(selected_items) > 0 : return selected_items 
+        if len(selected_items) > 0 : return selected_items
         else: return ''
 
-    '''    
-         keysym=Down keycode=2097215233 x=110 y=213>
-    <KeyPress event state=Mod3|Mod4 keysym=Up keycode=2113992448 x=110 y=213>
-    <KeyPress event state=Mod3|Mod4 keysym=Right keycode=2080438019 x=110 y=213>
-    <KeyPress event state=Mod3|Mod4 keysym=Left keycode=2063660802
-    '''
+  
+
+
+    def getQuery(self):
+        # self.root.withdraw() 
+        v = self.get_selected_items()[0]
+        spaces = " " * 24
+        p = spaces + "Enter the name and year of the Movie/Series:" + spaces
+        i = simpledialog.askstring(title="Test", prompt=p, initialvalue=v)
+
+        print("Running query:", i)
+        if len(i) <=1: 
+            print('invalid query ', len(i))
+            return
+        self.checkDb((i, v))
 
     def setSelection(self, a):
 
@@ -354,6 +494,14 @@ class App(tk.Frame):
         self.list.selection_anchor(a)
         self.list.activate(a)
         self.list.see(a) 
+
+    def onKeyUp(self, event):
+        print(event)
+        k = event.keycode  
+        # if k == 943782142 or k == 1010891006:
+        print('shift up')
+        self.list.configure(selectmode='BROWSE')
+
 
 
     def onKeyPress(self, event):
@@ -381,7 +529,19 @@ class App(tk.Frame):
                 print('end of list.')  
                 self.setSelection(1)
             self.update()
+        # elif k == 943782142 or k == 1010891006:
+        #     print('shift')
+        #     self.list.configure(selectmode='MULTIPLE')
+        elif k == 2063660802:
+            print('arrow Left') 
 
+        elif k == 2080438019:
+            print('arrow Right') 
+
+        elif k == 201326705:
+            #query
+            print('q')
+            self.getQuery()
         elif k == 855638143:
             #delete
             print('up')
@@ -415,7 +575,7 @@ class App(tk.Frame):
             # ip = self.path 
             ip = []
             for i in self.list.curselection():
-                ip.append(   self.path + self.list.get(i) + ' ')
+                ip.append(   self.mfiles.path + self.list.get(i) + ' ')
             print(ip)
             subprocess.call(['open', '-a', 'vlc',  str(ip) ]) 
 

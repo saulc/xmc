@@ -35,9 +35,9 @@ class App(tk.Frame):
       
         self.citem = ''
 
-        self.root.geometry('800x1080')
+        self.root.geometry('1200x1080')
         self.root.configure(background="black" )
-        self.root.wm_attributes('-alpha', 0.8)
+        self.root.wm_attributes('-alpha', 0.75)
 
         self.topFrame = tk.Frame(master) #, width=500, height=800)
         self.posterFrame = tk.Frame( self.topFrame ) 
@@ -66,50 +66,53 @@ class App(tk.Frame):
         self.dbutton.grid(row=1, column=3)
 
         self.entrythingy = tk.Entry(self.buttonframe, background="black" )
-        self.entrythingy.grid(row=2, column=0, columnspan = 4)
+        self.entrythingy.grid(row=1, column=4, columnspan = 4)
         self.contents = tk.StringVar() 
         self.contents.set(self.mfiles.path) 
         self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
 
-        self.progress = 0.
-        # self.progressVar = tk.DoubleVar()
-        # self.progressVar.set(self.progress)
-        self.progressBar = ttk.Progressbar(self.posterFrame, length=200, mode="determinate")
-        self.progressBar.grid(row=5, column=0)
+        # self.progress = 0.
+        # # self.progressVar = tk.DoubleVar()
+        # # self.progressVar.set(self.progress)
+        # self.progressBar = ttk.Progressbar(self.posterFrame, length=200, mode="determinate") 
+        # self.progressBar.grid(row=5, column=0)
 
 
         # img = Image.open("./posters/Iron%20Man%20%202008%20.jpg")
         img = Image.open('./posters/test.jpg')
-        img = img.resize((300, 420), 0)
+        self.imgs =  (420, 600)
+        # imgs =  (300, 420)
+        img = img.resize(self.imgs, 0)
         img = ImageTk.PhotoImage(img)
         self.img = img
-        self.panel = tk.Label(self.posterFrame, image = self.img, width=300, height=420)
+        self.panel = tk.Label(self.posterFrame, image = self.img, width=self.imgs[0], height=self.imgs[1])
         self.panel.grid(row=1, column=0)
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', font="Herculanum 14", width=60, height=42)   
+        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', justify="center", font="Herculanum 16", width=60, height=46)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.configure(background="black", foreground="white")
  
-        self.list.grid(row=0, column=1, padx=8,pady=1)
+        self.list.grid(row=0, column=1, padx=8,pady=10)
         self.list.bind('<<ListboxSelect>>', self.onListSelcted)    
         if self.mode == 0:
             a, aa = self.mfiles.showFiles()
             self.setData(a, aa)
         else : self.loadMovers()
 
-        self.text_widget = tk.Text(self.posterFrame,wrap='word', width=42, height=24)
-        self.text_widget.configure(background="black", foreground="white", highlightbackground="black" )
-        self.text_widget.grid(row=2, column=0)
+        self.font = "American\\ Typewriter 12"
+        self.mainText = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=10)
+        self.mainText.configure(background="black", foreground="white", highlightbackground="black" )
+        self.mainText.grid(row=2, column=0)
 
         # Insert text into the widget
-        self.text_widget.insert("1.0", "This is the first line.\n")
-        self.text_widget.insert("2.0", "This is the second line.")
+        self.mainText.insert("1.0", "This is the first line.\n")
+        self.mainText.insert("2.0", "This is the second line.")
 
 
-        self.info = tk.Text(self.posterFrame,wrap='word', width=42, height=7)
+        self.info = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=4)
         self.info.configure(background="black", foreground="white", highlightbackground="black" )
         self.info.grid(row=3, column=0)
         lib = str(len( xdb.getAllMovieTitles())) + ' movies in library.'
@@ -117,9 +120,10 @@ class App(tk.Frame):
         self.info.insert("2.0", "This is the second line.")
 
         #time
-        self.lb = tk.Label(self.posterFrame, width=7, height=1,   font='Herculanum 46') 
+        f = 'Phosphate' + ' 46'
+        self.lb = tk.Label(self.posterFrame, width=9, height=1,   font=f) 
         self.lb.configure(background="black", foreground="grey")
-        self.lb.grid(row=0, column=0) 
+        self.lb.grid(row=0, column=0, pady=0, padx=8) 
         self.cb()
 
         self.posterFrame.configure(background="systemTransparent" )
@@ -130,11 +134,12 @@ class App(tk.Frame):
         self.buttonframe.configure(background="black" )
         self.buttonframe.grid(row=4, column=0) #add buttons to the bottom
 
+        self.shiftDown = False
         self.selected = 1
         self.suffixes = ('.mp4', '.avi', '.mkv')
          
-        families = tkFont.families()
-        print(families)
+        # families = tkFont.families()
+        # print(families)
 
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
@@ -153,8 +158,8 @@ class App(tk.Frame):
 
     def updateProgress(self, value):
         print('update progress', value)
-        self.progressBar['value'] = value
-        self.root.update_idletasks() # Ensure the GUI updates
+        # self.progressBar['value'] = value
+        # self.root.update_idletasks() # Ensure the GUI updates
 
     def cb(self, event=None):
         """Display the time every second."""
@@ -194,7 +199,7 @@ class App(tk.Frame):
         if self.rb.get() == 1: 
             m = xdb.getAllMovieTitles()
         else: m = xdb.getAllTvNames()
-        print(m)
+        # print(m)
         self.setData([], m) 
         self.list.focus_set()
         self.setSelection(1)
@@ -214,22 +219,22 @@ class App(tk.Frame):
 
         print('update ui')
         sl = self.get_selected_items()[0]
-        print(sl)
+        # print(sl)
         if self.rb.get() == 2 or 'end of list' in sl: return
         info = xdb.getMovieInfo(sl)
         print('info', info)
         img = Image.open("./posters/"+info[2])
-        img = img.resize((300, 420), 0)
+        img = img.resize(self.imgs, 0)
         img = ImageTk.PhotoImage(img)
         self.img = img
         self.panel.config(image=img)
-        self.text_widget.delete("1.0", "end") 
-        self.text_widget.delete("2.0", "end") 
-        self.text_widget.insert("1.0", info[0] + '\n')
+        self.mainText.delete("1.0", "end") 
+        self.mainText.delete("2.0", "end") 
+        self.mainText.insert("1.0", info[0] + '\n')
 
         self.citem = info[3] + info[4] 
         fs = os.path.getsize(self.citem)
-        print(fs, 2**30)
+        # print(fs, 2**30)
         fs /= (2**30)
 
         dim = str((info[8], info[9]))
@@ -237,14 +242,14 @@ class App(tk.Frame):
         elif info[8] == 1280 : dim += ' 720p'
         dim+= ' ' + info[4][-3:] + ' ' 
         dim += f" {fs:.2f} GB"
-        self.text_widget.insert("2.0", info[6]+ ' ' + dim + '\n')
+        self.mainText.insert("2.0", info[6]+ ' ' + dim + '\n')
 
         duration = info[7]
-        print('wtf', duration, dim)
+        print('video meta:', duration, dim)
         vi =   str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins, '
         vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs \n'
-        self.text_widget.insert("3.0", vi+ '\n')
-        self.text_widget.insert("5.0", info[5]+ '\n')
+        self.mainText.insert("3.0", vi+ '\n')
+        self.mainText.insert("5.0", info[5]+ '\n')
 
         #set current item path to use later
         # att = xattr.listxattr(self.citem )  
@@ -466,8 +471,12 @@ class App(tk.Frame):
                     nr.append(rr[4])
                     continue
                 if q != None: 
-                    rr[3] = self.mfiles.path
-                    rr[4] = q[1] #add the file name in case we used a custom query
+                    print(q[1])
+                    rr[4] = q[1]
+                pt = rr[4]
+                rr[3] = pt[0:pt.rfind('/')+1]
+                rr[4] = pt.split('/')[-1] #add the file name in case we used a custom query
+                print('path check', rr[3], 'fn:', rr[4])
                 path = rr[3] + rr[4] #save the current item path
 
 
@@ -527,19 +536,40 @@ class App(tk.Frame):
         self.list.activate(a)
         self.list.see(a) 
 
+    def setSelectionJump(self, j):
+        si = self.list.curselection()
+        c = si[0]
+        print('List jump', c, j)
+        c += j
+        if c <= 0: c = 1
+        elif c >= len(self.listdata): c =  len(self.listdata) - 2
+        self.setSelection(c)
+        jj = c + j
+        if jj < len(self.listdata) and jj > 0:
+            self.list.see(jj) 
+        self.update()
+
     def onKeyUp(self, event):
         print(event)
         k = event.keycode  
-        # if k == 943782142 or k == 1010891006:
-        print('shift up')
-        self.list.configure(selectmode='BROWSE')
+        if k == 943782142 or k == 1010891006:
+            print('shift up')
+            # self.list.configure(selectmode='BROWSE') 
 
+            self.shiftDown = False
 
+    def shiftJump(self, k):
+        print('jump to:', k)
+        for i in range(len(self.listdata)):
+            if self.listdata[i].startswith(k):
+                self.setSelection(i)
+                return
 
     def onKeyPress(self, event):
         print(event)
         k = event.keycode
-
+        if self.shiftDown:
+            self.shiftJump(event.keysym)
         if k == 2113992448:
             print('arrow up', self.list.curselection() )
             if self.list.curselection()[0] <= 0 : 
@@ -561,15 +591,16 @@ class App(tk.Frame):
                 print('end of list.')  
                 self.setSelection(1)
             self.update()
-        # elif k == 943782142 or k == 1010891006:
-        #     print('shift')
+        elif k == 943782142 or k == 1010891006:
+            print('shift')
+            self.shiftDown = True
         #     self.list.configure(selectmode='MULTIPLE')
         elif k == 2063660802:
             print('arrow Left') 
-
+            self.setSelectionJump(-10)
         elif k == 2080438019:
             print('arrow Right') 
-
+            self.setSelectionJump(10)
         elif k == 201326705:
             #query
             print('q')

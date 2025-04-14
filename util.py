@@ -1,3 +1,7 @@
+
+#!/usr/bin/env python3
+#!/Users/user/Dev/xmc/bin/activate
+
 import os
 from random import randint
 
@@ -21,6 +25,7 @@ import time
 import tkinter.font as tkFont
  
 from pymediainfo import MediaInfo
+from copy import deepcopy
 
 
 class App(tk.Frame):
@@ -94,11 +99,11 @@ class App(tk.Frame):
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', justify="center", font="Herculanum 16", width=42, height=46)   
+        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', justify="center", font="Herculanum 16", width=46, height=46)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.configure(background="black", foreground="white")
  
-        self.list.grid(row=0, column=1, padx=8,pady=10)
+        self.list.grid(row=0, column=1, padx=8,pady=2)
         self.list.bind('<<ListboxSelect>>', self.onListSelcted)    
         if self.mode == 0:
             a, aa = self.mfiles.showFiles()
@@ -106,7 +111,7 @@ class App(tk.Frame):
         else : self.loadMovers()
 
         self.font = "American\\ Typewriter 12"
-        self.mainText = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=6)
+        self.mainText = tk.Text(self.posterFrame,wrap='word',font=self.font, width=38, height=6)
         self.mainText.configure(background="black", foreground="white", highlightbackground="black" )
         self.mainText.grid(row=3, column=0)
 
@@ -120,7 +125,7 @@ class App(tk.Frame):
         self.title.grid(row=2, column=0)
         self.title.tag_configure("center", justify='center')
 
-        self.info = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=4)
+        self.info = tk.Text(self.posterFrame,wrap='word',font=self.font, width=38, height=4)
         self.info.configure(background="black", foreground="white", highlightbackground="black" )
         self.info.grid(row=4, column=0)
         lib = str(len( xdb.getAllMovieTitles())) + ' movies in library.'
@@ -137,12 +142,13 @@ class App(tk.Frame):
         self.posterFrame.configure(background="systemTransparent" )
         self.posterFrame.grid(row=0, column=0)
         self.topFrame.configure(background="systemTransparent" )
-        self.topFrame.pack(pady=0, padx=8)
+        self.topFrame.pack(pady=0, padx=4)
 
         self.buttonframe.configure(background="black" , width=50)
         self.buttonframe.grid(row=6, column=0, pady=12) #add buttons to the bottom
 
         self.shiftDown = False
+        self.qsave = None
         self.selected = 1
         self.suffixes = ('.mp4', '.avi', '.mkv')
          
@@ -179,18 +185,42 @@ class App(tk.Frame):
         self.lb.after(1000, self.cb)
 
     def print_contents(self, event):
-        print("Hi. The current entry content is:",
+        print(self.mode, " Hi. The current entry content is:",
               self.contents.get())
+        if self.mode == 0:
+            pass
+        else:
+            self.findItem(self.contents.get())
+
+    def findItem(self, q):
+        print('Searching db for: ', q)
+        if q is '': 
+            # self.listdata = self.qsave
+            self.setData([], self.qsave)
+            return
+        self.qsave = deepcopy(self.listdata)[1:-1]
+
+        d = []
+        for i in self.qsave:
+            print(i)
+            if q in i[0].lower():
+                d.append(i)
+        self.setData([], d)
+
+
+
         
     def changeMode(self):
         if self.mode == 0: 
             self.mode = 1
-            self.entrythingy.config(state="disabled")
+            # self.entrythingy.config(state="disabled")
+            self.contents.set('')
             self.loadMovers()
         else: 
             self.mode = 0
             self.goHome()
-            self.entrythingy.config(state="normal")
+            # self.entrythingy.config(state="normal")
+            self.contents.set(self.mfiles.path)
 
 
     def addTv(self, r):
@@ -461,43 +491,12 @@ class App(tk.Frame):
                 if q != None:
                     r = request.qdb(q[0], tv)
                 else: r = request.qdb(m.split('/')[-1], tv)
-                if tv :  
-                    print(r) 
-                    sn = ''
-                    sid = ''
-                    for l in r:
-                        if 'id' in l: sid = l[4:] 
-                        elif 'original_name' in l: sn = l[16:-1] 
-                    print('Show: ', sn, sid)
-                    txt = i
-                    if q !=  None: txt = q[1]
-                    x = re.search(r"S(\d+)",txt)
-                    y = re.search(r"E(\d+)",txt) 
-                    sea = x[0][1:]
-                    ep = y[0][1:] 
+              
 
-                    print('season: ' , sea, ' show ep:', ep)
-                    sea = int(sea)
-                    ep = int(ep)
-                    epi = request.tvep(sid, sea, ep)
-                    print(epi)
-                    return
-                rr = request.getInfo(r, '', m)
-                print('response check',rr)
-                if len(rr) > 0 and rr[0] == '' : 
-                    nr.append(rr[4])
-                    continue
-                if q != None: 
-                    print(q[1])
-                    rr[4] = q[1]
-                pt = rr[4]
-                rr[3] = pt[0:pt.rfind('/')+1]
-                rr[4] = pt.split('/')[-1] #add the file name in case we used a custom query
-                print('path check', rr[3], 'fn:', rr[4])
                 path = rr[3] + rr[4] #save the current item path
 
 
-                print('path  ---:', path)
+                print('path  ---:', rr[3] , rr[4])
                 duration, dim = self.get_video_metadata(path) #add video info to db
                 rr.append(str(duration))
                 rr.append(str(dim[0]))
@@ -629,7 +628,8 @@ class App(tk.Frame):
         elif k == 855638143:
             #delete
             print('up')
-            self.mfiles.goUp()
+            if self.mode == 0:
+                self.mfiles.goUp()
         elif k == 603979789 or k == 822083616:
             #enter or space
             print('select')

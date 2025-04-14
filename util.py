@@ -35,7 +35,7 @@ class App(tk.Frame):
       
         self.citem = ''
 
-        self.root.geometry('1200x1080')
+        self.root.geometry('1000x1080')
         self.root.configure(background="black" )
         self.root.wm_attributes('-alpha', 0.75)
 
@@ -51,6 +51,8 @@ class App(tk.Frame):
         self.r1.grid(row=0, column=0)
         self.r2 = tk.Radiobutton(self.buttonframe,background="black" , text="Tv/Series", variable=self.rb, value=2, command=self.sel)
         self.r2.grid(row=0, column=1)
+        self.r3 = tk.Radiobutton(self.buttonframe,background="black" , text="Collections", variable=self.rb, value=3, command=self.sel)
+        self.r3.grid(row=0, column=2)
 
         
         self.modebutton = tk.Button(self.buttonframe,highlightbackground="black" , text="Mode", command=self.changeMode)
@@ -59,18 +61,19 @@ class App(tk.Frame):
         self.homebutton = tk.Button(self.buttonframe, highlightbackground="black" ,text="Home", command=self.goHome)
         self.homebutton.grid(row=1, column=1)
   
-        self.button = tk.Button(self.buttonframe, highlightbackground="black" ,text="Up", command=self.goUp)
+        self.button = tk.Button(self.buttonframe, highlightbackground="black" ,text=" Up ", command=self.goUp)
         self.button.grid(row=1, column=2)
 
-        self.dbutton = tk.Button(self.buttonframe,highlightbackground="black" , text="db", command=self.checkDb)
-        self.dbutton.grid(row=1, column=3)
+        self.dbutton = tk.Button(self.buttonframe,highlightbackground="black" , text=" db ", command=self.checkDb)
+        self.dbutton.grid(row=1, column=4)
 
-        self.entrythingy = tk.Entry(self.buttonframe, background="black" )
-        self.entrythingy.grid(row=1, column=4, columnspan = 4)
+        self.entrythingy = tk.Entry(self.buttonframe, background="black",width=40 )
         self.contents = tk.StringVar() 
         self.contents.set(self.mfiles.path) 
         self.entrythingy["textvariable"] = self.contents 
         self.entrythingy.bind('<Key-Return>', self.print_contents)
+        
+        self.entrythingy.grid(row=2, column=0, columnspan = 8, pady=1)
 
         # self.progress = 0.
         # # self.progressVar = tk.DoubleVar()
@@ -91,7 +94,7 @@ class App(tk.Frame):
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', justify="center", font="Herculanum 16", width=60, height=46)   
+        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', justify="center", font="Herculanum 16", width=42, height=46)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
         self.list.configure(background="black", foreground="white")
  
@@ -103,18 +106,23 @@ class App(tk.Frame):
         else : self.loadMovers()
 
         self.font = "American\\ Typewriter 12"
-        self.mainText = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=10)
+        self.mainText = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=6)
         self.mainText.configure(background="black", foreground="white", highlightbackground="black" )
-        self.mainText.grid(row=2, column=0)
+        self.mainText.grid(row=3, column=0)
 
         # Insert text into the widget
         self.mainText.insert("1.0", "This is the first line.\n")
         self.mainText.insert("2.0", "This is the second line.")
 
 
+        self.title = tk.Text(self.posterFrame,wrap='word',font=self.font[0:-2]+'24',  width=20, height=1)
+        self.title.configure(background="black", foreground="white", highlightbackground="black" )
+        self.title.grid(row=2, column=0)
+        self.title.tag_configure("center", justify='center')
+
         self.info = tk.Text(self.posterFrame,wrap='word',font=self.font, width=40, height=4)
         self.info.configure(background="black", foreground="white", highlightbackground="black" )
-        self.info.grid(row=3, column=0)
+        self.info.grid(row=4, column=0)
         lib = str(len( xdb.getAllMovieTitles())) + ' movies in library.'
         self.info.insert("1.0", lib + "\n")
         self.info.insert("2.0", "This is the second line.")
@@ -131,8 +139,8 @@ class App(tk.Frame):
         self.topFrame.configure(background="systemTransparent" )
         self.topFrame.pack(pady=0, padx=8)
 
-        self.buttonframe.configure(background="black" )
-        self.buttonframe.grid(row=4, column=0) #add buttons to the bottom
+        self.buttonframe.configure(background="black" , width=50)
+        self.buttonframe.grid(row=6, column=0, pady=12) #add buttons to the bottom
 
         self.shiftDown = False
         self.selected = 1
@@ -143,11 +151,11 @@ class App(tk.Frame):
 
         root.bind("<Button>", self.click_handler)
         root.bind('<KeyPress>', self.onKeyPress) 
-        # root.bind("<KeyRelease>", self.onKeyUp)
+        root.bind("<KeyRelease>", self.onKeyUp)
         self.changeMode()
         self.update() 
 
-  
+   
     def onListSelcted(self, event):
         print('list selected', event)
 
@@ -218,10 +226,10 @@ class App(tk.Frame):
         if self.mode == 0: return
 
         print('update ui')
-        sl = self.get_selected_items()[0]
+        sl = self.list.curselection()[0]
         # print(sl)
-        if self.rb.get() == 2 or 'end of list' in sl: return
-        info = xdb.getMovieInfo(sl)
+        if self.rb.get() == 2 or 'end of list' in self.listdata[sl][0]: return
+        info = xdb.getMovieInfo(self.listdata[sl][1])
         print('info', info)
         img = Image.open("./posters/"+info[2])
         img = img.resize(self.imgs, 0)
@@ -230,7 +238,10 @@ class App(tk.Frame):
         self.panel.config(image=img)
         self.mainText.delete("1.0", "end") 
         self.mainText.delete("2.0", "end") 
-        self.mainText.insert("1.0", info[0] + '\n')
+
+        self.title.delete("1.0", "end") 
+        self.title.insert("1.0", info[0])
+        self.title.tag_add("center", "1.0", "end")
 
         self.citem = info[3] + info[4] 
         fs = os.path.getsize(self.citem)
@@ -242,15 +253,18 @@ class App(tk.Frame):
         elif info[8] == 1280 : dim += ' 720p'
         dim+= ' ' + info[4][-3:] + ' ' 
         dim += f" {fs:.2f} GB"
-        self.mainText.insert("2.0", info[6]+ ' ' + dim + '\n')
 
         duration = info[7]
         print('video meta:', duration, dim)
         vi =   str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins, '
         vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs \n'
-        self.mainText.insert("3.0", vi+ '\n')
-        self.mainText.insert("5.0", info[5]+ '\n')
+        self.info.delete("1.0", "end") 
+        self.info.delete("2.0", "end") 
+        self.info.insert("1.0", info[6] + '\n')
+        self.info.insert("2.0", dim + '\n')
+        self.info.insert("3.0", vi+ '\n')
 
+        self.mainText.insert("3.0", info[5]+ '\n')
         #set current item path to use later
         # att = xattr.listxattr(self.citem )  
         # with open(att[1], "r") as file:
@@ -274,12 +288,15 @@ class App(tk.Frame):
         else:
             e = ' Movers in library ~  '
             if self.rb.get() == 2: e = e.replace('Movers', 'Tv/Series')
-            self.listdata.insert(0,'  ~ ' + l + e)
-            self.listdata.append('  ~ ' + l + ' end of list ~  ')
+            self.listdata.insert(0,('  ~ ' + l + e, 0))
+            self.listdata.append(('  ~ ' + l + ' end of list ~  ', 0))
         for i in range(len(self.listdata)):
             t = self.listdata[i]
             # t += self.chop(t)
-            self.list.insert(i, t)  
+            if self.mode == 1:
+                self.list.insert(i, t[0])  
+            else: self.list.insert(i, t)  
+
 
         if self.list.size() > 0:
             self.list.selection_set(0)
@@ -550,18 +567,22 @@ class App(tk.Frame):
         self.update()
 
     def onKeyUp(self, event):
-        print(event)
         k = event.keycode  
-        if k == 943782142 or k == 1010891006:
+        print('key up!', event, k, type(k))
+        if k == 939587838 or k == 1006696702:
             print('shift up')
             # self.list.configure(selectmode='BROWSE') 
-
             self.shiftDown = False
 
     def shiftJump(self, k):
         print('jump to:', k)
         for i in range(len(self.listdata)):
-            if self.listdata[i].startswith(k):
+            if k.lower() == 't':
+                if self.listdata[i].startswith(k) and not self.listdata[i].startswith('The'):
+                    self.setSelection(i)
+                    return
+
+            elif self.listdata[i].startswith(k):
                 self.setSelection(i)
                 return
 

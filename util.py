@@ -2,6 +2,10 @@
 #!/usr/bin/env python3
 #!/Users/user/Dev/xmc/bin/activate
 
+#to run
+#chmod +x filename 
+#./filename
+
 import os
 from random import randint
 
@@ -99,9 +103,9 @@ class App(tk.Frame):
          
         # Add widgets to tab1 
         self.listdata = []
-        self.list = tk.Listbox(self.topFrame,   selectbackground='#ff0066', justify="center", font="Herculanum 16", width=46, height=46)   
+        self.list = tk.Listbox(self.topFrame,   justify="center", font="Herculanum 16", width=46, height=46)   
         # self.list.pack(padx=20,pady=10, expand=True, fill="both")
-        self.list.configure(background="black", foreground="white")
+        self.list.configure( selectbackground='black', selectforeground='#ff0066',background="black", foreground="white")
  
         self.list.grid(row=0, column=1, padx=8,pady=2)
         self.list.bind('<<ListboxSelect>>', self.onListSelcted)    
@@ -148,6 +152,9 @@ class App(tk.Frame):
         self.buttonframe.grid(row=6, column=0, pady=12) #add buttons to the bottom
 
         self.shiftDown = False
+        self.mt = None #text animation
+        self.it = None
+        self.tt = None
         self.qsave = None
         self.selected = 1
         self.suffixes = ('.mp4', '.avi', '.mkv')
@@ -246,7 +253,62 @@ class App(tk.Frame):
         s, a = self.mfiles.getFiles(path)
         self.setData(s, a)
 
-        
+    def updateText(self, t = None):
+        # print('test', t)
+
+        if t != None and self.mt == None: self.mt = [t, 1]
+      
+        self.mainText.delete("1.0", "end") 
+        self.mainText.insert("1.0", self.mt[0][0:self.mt[1]]+ '\n')
+
+        self.mt[1] += 30
+
+        if self.mt[1] >= len(self.mt[0]): 
+            self.mainText.delete("1.0", "end") 
+            self.mainText.insert("1.0", self.mt[0]+ '\n')
+            self.mt = None
+        else: self.mainText.after(30, self.updateText)
+
+    def updateTitle(self, t = None):
+        # print('test',  t)
+
+        if t != None and self.tt == None: self.tt = [t, 1]
+      
+        self.title.delete("1.0", "end") 
+        self.title.insert("1.0", self.tt[0][0:self.tt[1]]+ '\n')
+        self.title.tag_add("center", "1.0", "end")
+
+        self.tt[1] += 1
+
+        if self.tt[1] >= len(self.tt[0]): 
+            self.title.delete("1.0", "end") 
+            self.title.insert("1.0", self.tt[0]+ '\n')
+            self.title.tag_add("center", "1.0", "end")
+            self.tt = None
+        else: self.title.after(10, self.updateTitle)
+
+
+    def updateInfo(self, t = None):
+        print('test',  t)
+
+        if t != None and self.it == None: 
+            self.it = [t, 0]
+
+            for i in range(len(t)):
+                print(float(i+1), self.it[0][i] )
+                self.info.delete(float(i+1), "end") 
+      
+        i = self.it[1]
+        print(i)   
+        if i < len(self.it[0]):
+            self.info.insert(float(i+1), str(self.it[0][i]) + ' \n')
+        # self.info.tag_add("center", "1.0", "end")
+
+        self.it[1] += 1
+
+        if self.it[1] > len(self.it[0]): 
+            self.it = None
+        else: self.info.after(100, self.updateInfo)
 
     # def onSelect(self, event):
     #     # Use the event argument if needed
@@ -256,6 +318,7 @@ class App(tk.Frame):
         if self.mode == 0: return
 
         print('update ui')
+        # self.updateText()
         sl = self.list.curselection()[0]
         # print(sl)
         if self.rb.get() == 2 or 'end of list' in self.listdata[sl][0]: return
@@ -266,14 +329,11 @@ class App(tk.Frame):
         img = ImageTk.PhotoImage(img)
         self.img = img
         self.panel.config(image=img)
-        self.mainText.delete("1.0", "end") 
-        self.mainText.delete("2.0", "end") 
 
-        self.title.delete("1.0", "end") 
-        self.title.insert("1.0", info[0])
-        self.title.tag_add("center", "1.0", "end")
+        self.updateTitle(info[0])
 
         self.citem = info[3] + info[4] 
+
         fs = os.path.getsize(self.citem)
         # print(fs, 2**30)
         fs /= (2**30)
@@ -287,20 +347,13 @@ class App(tk.Frame):
         duration = info[7]
         print('video meta:', duration, dim)
         vi =   str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins, '
-        vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs \n'
-        self.info.delete("1.0", "end") 
-        self.info.delete("2.0", "end") 
-        self.info.insert("1.0", info[6] + '\n')
-        self.info.insert("2.0", dim + '\n')
-        self.info.insert("3.0", vi+ '\n')
+        vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs ' 
+        i = [ info[6], dim, vi]
+        self.updateInfo(i)
+ 
 
-        self.mainText.insert("3.0", info[5]+ '\n')
-        #set current item path to use later
-        # att = xattr.listxattr(self.citem )  
-        # with open(att[1], "r") as file:
-        #     content = file.read()
-        #     print(content)
-        # print(res)
+        self.updateText(info[5])
+ 
 
     def setCon(self, s):
         self.contents.set(s)
@@ -489,8 +542,8 @@ class App(tk.Frame):
                 self.updateProgress(self.progress)
                 tv = self.rb.get()==2 
                 if q != None:
-                    r = request.qdb(q[0], tv)
-                else: r = request.qdb(m.split('/')[-1], tv)
+                    rr = request.qdb(q[0], tv)
+                else: rr = request.qdb(m, tv)
               
 
                 path = rr[3] + rr[4] #save the current item path

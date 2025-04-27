@@ -6,6 +6,7 @@
 #chmod +x filename 
 #./filename
 
+import vlc
 import os
 from random import randint
 
@@ -33,13 +34,13 @@ from copy import deepcopy
 
 
 class App(tk.Frame):
-    def __init__(self, root,  master):
-        super().__init__(master)
+    def __init__(self):
+        self.root = tk.Tk()
+        super().__init__(self.root)
         self.pack() 
         self.mode = 0 #0 files 1 db
         self.mfiles = xfiles.xfiles('/Volumes/T7/', self)
-        self.root = root
-        self.master = master
+
         self.root.title("xmc")
       
         self.citem = ''
@@ -48,7 +49,7 @@ class App(tk.Frame):
         self.root.configure(background="black" )
         self.root.wm_attributes('-alpha', 0.75)
 
-        self.topFrame = tk.Frame(master) #, width=500, height=800)
+        self.topFrame = tk.Frame(self.root) #, width=500, height=800)
         self.posterFrame = tk.Frame( self.topFrame ) 
 
         # self.root.configure(bg="grey")
@@ -62,6 +63,8 @@ class App(tk.Frame):
         self.r2.grid(row=0, column=1)
         self.r3 = tk.Radiobutton(self.buttonframe,background="black" , text="Collections", variable=self.rb, value=3, command=self.sel)
         self.r3.grid(row=0, column=2)
+        self.r3 = tk.Radiobutton(self.buttonframe,background="black" , text="Recent", variable=self.rb, value=4, command=self.sel)
+        self.r3.grid(row=0, column=3)
 
         
         self.modebutton = tk.Button(self.buttonframe,highlightbackground="black" , text="Mode", command=self.changeMode)
@@ -74,7 +77,7 @@ class App(tk.Frame):
         self.button.grid(row=1, column=2)
 
         self.dbutton = tk.Button(self.buttonframe,highlightbackground="black" , text=" db ", command=self.checkDb)
-        self.dbutton.grid(row=1, column=4)
+        self.dbutton.grid(row=1, column=3)
 
         self.entrythingy = tk.Entry(self.buttonframe, background="black",width=40 )
         self.contents = tk.StringVar() 
@@ -85,9 +88,9 @@ class App(tk.Frame):
         self.entrythingy.grid(row=2, column=0, columnspan = 8, pady=1)
 
         # self.progress = 0.
-        # # self.progressVar = tk.DoubleVar()
-        # # self.progressVar.set(self.progress)
-        # self.progressBar = ttk.Progressbar(self.posterFrame, length=200, mode="determinate") 
+        # self.progressVar = tk.DoubleVar()
+        # self.progressVar.set(0)
+        # self.progressBar = ttk.Progressbar(self.posterFrame, variable=self.progressVar, length=200, mode="determinate") 
         # self.progressBar.grid(row=5, column=0)
 
 
@@ -156,15 +159,17 @@ class App(tk.Frame):
         self.it = None
         self.tt = None
         self.qsave = None
+        self.tvShow = None
         self.selected = 1
         self.suffixes = ('.mp4', '.avi', '.mkv')
+        self.media = None
          
         # families = tkFont.families()
         # print(families)
 
-        root.bind("<Button>", self.click_handler)
-        root.bind('<KeyPress>', self.onKeyPress) 
-        root.bind("<KeyRelease>", self.onKeyUp)
+        self.root.bind("<Button>", self.click_handler)
+        self.root.bind('<KeyPress>', self.onKeyPress) 
+        self.root.bind("<KeyRelease>", self.onKeyUp)
         self.changeMode()
         self.update() 
 
@@ -174,13 +179,16 @@ class App(tk.Frame):
 
     def sel(self): 
         print('Raido button clicked', self.rb.get())
-        if self.mode == 1:
-            self.loadMovers()
+        # if self.mode == 1:
+        self.loadMovers()
+        self.update()
 
-    def updateProgress(self, value):
-        print('update progress', value)
-        # self.progressBar['value'] = value
+    def updateProgress(self):
+
+        # print('update progress', self.progressVar.get())
+        # self.progressBar['value'] =  self.progressVar.get()
         # self.root.update_idletasks() # Ensure the GUI updates
+        pass
 
     def cb(self, event=None):
         """Display the time every second."""
@@ -201,7 +209,7 @@ class App(tk.Frame):
 
     def findItem(self, q):
         print('Searching db for: ', q)
-        if q is '': 
+        if q == '': 
             # self.listdata = self.qsave
             self.setData([], self.qsave)
             return
@@ -243,11 +251,26 @@ class App(tk.Frame):
     def loadMovers(self):
         if self.rb.get() == 1: 
             m = xdb.getAllMovieTitles()
-        else: m = xdb.getAllTvNames()
+        else: m = xdb.getAllTvShows()
         # print(m)
         self.setData([], m) 
         self.list.focus_set()
         self.setSelection(1)
+
+    def showClicked(self):
+        s = self.get_selected_items()[0]
+        print('Show Clicked:', s)
+        self.tvShow = s
+        sl = self.list.curselection()[0]
+        m = xdb.getAllEps(self.listdata[sl][1])
+        m = sorted(m,  key=lambda x: x[3]*100+x[4]) 
+        print(m)
+        self.setData([], m) 
+        self.list.focus_set()
+        self.setSelection(1)
+        self.update()
+
+
 
     def reload(self, path):
         s, a = self.mfiles.getFiles(path)
@@ -256,18 +279,20 @@ class App(tk.Frame):
     def updateText(self, t = None):
         # print('test', t)
 
-        if t != None and self.mt == None: self.mt = [t, 1]
+        if t != None and self.mt == None: 
+            self.mt = [t, 0]
+            self.mainText.delete("1.0", "end") 
       
-        self.mainText.delete("1.0", "end") 
-        self.mainText.insert("1.0", self.mt[0][0:self.mt[1]]+ '\n')
+        if self.mt[1] < len(self.mt[0]): 
+            self.mainText.insert(tk.END, self.mt[0][self.mt[1]:self.mt[1]+10])
+        self.mt[1] += 10
+        if self.mt[1] > len(self.mt[0]):
+            self.mt[1] = len(self.mt[0])
 
-        self.mt[1] += 30
 
         if self.mt[1] >= len(self.mt[0]): 
-            self.mainText.delete("1.0", "end") 
-            self.mainText.insert("1.0", self.mt[0]+ '\n')
             self.mt = None
-        else: self.mainText.after(30, self.updateText)
+        else: self.mainText.after(10, self.updateText)
 
     def updateTitle(self, t = None):
         # print('test',  t)
@@ -289,17 +314,17 @@ class App(tk.Frame):
 
 
     def updateInfo(self, t = None):
-        print('test',  t)
+        # print('test',  t)
 
         if t != None and self.it == None: 
             self.it = [t, 0]
 
             for i in range(len(t)):
-                print(float(i+1), self.it[0][i] )
+                # print(float(i+1), self.it[0][i] )
                 self.info.delete(float(i+1), "end") 
       
         i = self.it[1]
-        print(i)   
+        # print(i)   
         if i < len(self.it[0]):
             self.info.insert(float(i+1), str(self.it[0][i]) + ' \n')
         # self.info.tag_add("center", "1.0", "end")
@@ -308,7 +333,7 @@ class App(tk.Frame):
 
         if self.it[1] > len(self.it[0]): 
             self.it = None
-        else: self.info.after(100, self.updateInfo)
+        else: self.info.after(120, self.updateInfo)
 
     # def onSelect(self, event):
     #     # Use the event argument if needed
@@ -321,38 +346,65 @@ class App(tk.Frame):
         # self.updateText()
         sl = self.list.curselection()[0]
         # print(sl)
-        if self.rb.get() == 2 or 'end of list' in self.listdata[sl][0]: return
-        info = xdb.getMovieInfo(self.listdata[sl][1])
+        if 'end of list' in self.listdata[sl][0]: return
+
+        dim = None
+        if self.rb.get() == 2:
+            print('Tv Mode')
+            if self.tvShow == None:
+                info = xdb.getTvInfo(self.listdata[sl][1])
+                self.citem = None
+             
+            else: 
+                info = xdb.getEpInfo(self.listdata[sl][1])
+                print(info)
+                self.citem = info[5] + info[6] 
+
+                dim = [(info[10], info[11])]
+                self.updateText(info[7])
+        elif self.rb.get() == 1:
+            info = xdb.getMovieInfo(self.listdata[sl][1])
+
+            self.citem = info[3] + info[4] 
+            dim = [(info[8], info[9]) ]
+            self.updateText(info[5])
+        else: print('Collections')
+
         print('info', info)
-        img = Image.open("./posters/"+info[2])
-        img = img.resize(self.imgs, 0)
-        img = ImageTk.PhotoImage(img)
-        self.img = img
-        self.panel.config(image=img)
 
         self.updateTitle(info[0])
+        if self.tvShow == None or self.rb.get() == 1:
+            pos = './posters/'
+            if self.rb.get() == 2:
+                pos += 'tv/'
+            img = Image.open(pos+info[2])
+            img = img.resize(self.imgs, 0)
+            img = ImageTk.PhotoImage(img)
+            self.img = img
+            self.panel.config(image=img)
 
-        self.citem = info[3] + info[4] 
 
-        fs = os.path.getsize(self.citem)
-        # print(fs, 2**30)
-        fs /= (2**30)
+        if dim != None:
+            # fs = os.path.getsize(self.citem)
+            # # print(fs, 2**30)
+            # fs /= (2**30)
 
-        dim = str((info[8], info[9]))
-        if info[8] == 1920 : dim += ' 1080p'
-        elif info[8] == 1280 : dim += ' 720p'
-        dim+= ' ' + info[4][-3:] + ' ' 
-        dim += f" {fs:.2f} GB"
+            if dim[0] == 1920 : dim.append(' 1080p')
+            elif dim[0] == 1280 :  dim.append(' 720p') 
 
-        duration = info[7]
-        print('video meta:', duration, dim)
-        vi =   str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins, '
-        vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs ' 
-        i = [ info[6], dim, vi]
-        self.updateInfo(i)
+            dim.append( ' ' + self.citem[-3:] + ' ' ) 
+            # dim.append( f" {fs:.2f} GB" )
+
+            duration = info[-6]
+            # print('video meta:', duration, dim)
+            vi =   str(int(duration/60//60)) + ' hr +' + str(int(duration/60%60)) + ' mins, '
+            vi +=   str(duration//60) + ' mins, ' + str(duration) + ' secs ' 
+
+            ds = ' '.join(map(lambda x: str(x), dim))
+            i = [ info[6], ds, vi]
+            self.updateInfo(i)
  
 
-        self.updateText(info[5])
  
 
     def setCon(self, s):
@@ -370,14 +422,21 @@ class App(tk.Frame):
             self.listdata.append('  ~ ' + l + ' end of list ~  ')
         else:
             e = ' Movers in library ~  '
-            if self.rb.get() == 2: e = e.replace('Movers', 'Tv/Series')
+            if self.rb.get() == 2: 
+                e = e.replace('Movers', 'Tv/Series') 
             self.listdata.insert(0,('  ~ ' + l + e, 0))
             self.listdata.append(('  ~ ' + l + ' end of list ~  ', 0))
         for i in range(len(self.listdata)):
             t = self.listdata[i]
             # t += self.chop(t)
             if self.mode == 1:
-                self.list.insert(i, t[0])  
+                if self.tvShow != None:
+                    print(len(t), t[0])
+                    tt =  t[0] 
+                    if i >= 1 and i < len(self.listdata)-1:
+                        tt += ' s'+ str(t[3])+ 'e'+ str(t[4])
+                    self.list.insert(i, tt ) 
+                else: self.list.insert(i, t[0])  
             else: self.list.insert(i, t)  
 
 
@@ -417,18 +476,19 @@ class App(tk.Frame):
 
     @staticmethod
     def onSelect(arg):
-        print('on select')
+        print('on select',arg)
 
     def click_handler(self, event):
         # event also has x & y attributes
         print(str(event.num) + ' x y: ' + str(event.x) + ' ' + str(event.y))
-        if event.num == 3:
-            print("RIGHT CLICK")
-            self.click()
-        elif event.num == 1:
-            print('left click')
-            print(event)
-            self.update()
+        if event.widget == self.list:
+            if event.num == 3:
+                print("RIGHT CLICK")
+                self.click()
+            elif event.num == 1:
+                print('left click')
+                print(event)
+                self.update()
 
     def click(self):
         if self.mode == 0: #files
@@ -444,19 +504,19 @@ class App(tk.Frame):
                 d, f = self.mfiles.setPath(item, False)
                 self.setData(d,f)
         else: #xdb
-            self.update()
-            ip = self.citem
-            print(ip)
-            if os.path.isfile(ip):
-              subprocess.call(['open',  ip ]) 
+            if self.rb.get() == 2 and self.tvShow == None:
+                    self.showClicked()
+            else:
+                self.update()
+                ip = self.citem
+                print(ip)
+                if os.path.isfile(ip):
+                  subprocess.call(['open',  ip ]) 
                  
 
     def goHome(self):
             if self.mode == 0: self.mfiles.goHome()
             else: self.loadMovers()
-
-    def button_click(self):
-        print("Button clicked!")
 
     def goUp(self):
             if self.mode == 0: self.mfiles.goUp()
@@ -536,52 +596,79 @@ class App(tk.Frame):
                 print(isvid, m)
                 print('checking item', m)
 
-                self.progress = 100* n // (len(i))
-                n += 1
+                # self.progressVar.set( 100* n // (len(i)) )
+                # n += 1
                 # self.progressVar.set(self.progress)
-                self.updateProgress(self.progress)
+                # self.updateProgress()
                 tv = self.rb.get()==2 
                 if q != None:
                     rr = request.qdb(q[0], tv)
                 else: rr = request.qdb(m, tv)
               
+                if rr == None:
+                    nr.append(m)
+                else: 
+                    path = m
+                    print('path  ---:', m)
+                    fs = os.path.getsize(path)
+                    # print(fs, 2**30)
+                    fs /= (2**30)
+                    if self.rb.get() == 1: 
 
-                path = rr[3] + rr[4] #save the current item path
+                        duration, dim = self.get_video_metadata(path) #add video info to db
+                        rr.append(str(duration))
+                        rr.append(str(dim[0]))
+                        rr.append(str(dim[1]))
+                        rr.append(str(fs))
+                        print(path, duration, dim)
+                        self.addMovie(rr)
+                    else:  
 
+                        duration, dim = self.get_video_metadata(path) #add video info to db
+                       
 
-                print('path  ---:', rr[3] , rr[4])
-                duration, dim = self.get_video_metadata(path) #add video info to db
-                rr.append(str(duration))
-                rr.append(str(dim[0]))
-                rr.append(str(dim[1]))
-                print(path, duration, dim)
-                if self.rb.get() == 1:
-                    self.addMovie(rr)
-                else: self.addTv(rr)
-                request.getPoster(rr[2]) 
+                        print(path, duration, dim, fs)
+                        ei = request.getTvInfo(rr[1], m)
+                        ei[5] = m[0:m.rfind('/')+1]
+                        ei[6] = m.split('/')[-1]
+
+                        ei.extend([str(duration), str(dim[0]), str(dim[1]), str(fs)])
+                        shows = [ i[0] for i in xdb.getAllTvShows() ]
+                        if rr[0] not in shows:
+                            print(len(rr))
+                            xdb.addTv(rr, True)
+
+                        self.addTv(ei)
+                        # self.addTvShow()
+ 
+                    request.getPoster(rr[2], tv) 
 
         print('no reponse:', len(nr), nr)
         return nr
 
     def checkDb(self, q = None):
-       
         if self.mode == 0: 
             self.addItemsToDb(q)
         else:
                 i = self.get_selected_items()[0]
-                xdb.deleteMovie(i)
-                self.loadMovers()
 
+                if self.rb.get() == 1:
+                    xdb.deleteMovie(i)
+                    self.loadMovers()
+                elif self.rb.get() == 2:
+                    sl = self.list.curselection()[0]
+                    ep = self.listdata[sl][1]
+                    print('check db tv', sl, ep)
+                    xdb.deleteEp(ep)
+                    self.update()
+                    # self.loadMovers()
    
     def get_selected_items(self):
         selected_indices = self.list.curselection()
-        selected_items = [self.list.get(index) for index in selected_indices]
+        selected_items = [self.list.get(index) for index in selected_indices]  
         print(selected_items)
         if len(selected_items) > 0 : return selected_items
         else: return ''
-
-  
-
 
     def getQuery(self):
         # self.root.withdraw() 
@@ -629,14 +716,20 @@ class App(tk.Frame):
     def shiftJump(self, k):
         print('jump to:', k)
         for i in range(len(self.listdata)):
-            if k.lower() == 't':
-                if self.listdata[i].startswith(k) and not self.listdata[i].startswith('The'):
+            if self.mode == 0:
+                if self.listdata[i].startswith(k):
+                    print('jumping:', i)
                     self.setSelection(i)
                     return
+            else:
+                if k.lower() == 't':
+                    if self.listdata[i][0].startswith(k) and not self.listdata[i][0].startswith('The'):
+                        self.setSelection(i)
+                        return
 
-            elif self.listdata[i].startswith(k):
-                self.setSelection(i)
-                return
+                elif self.listdata[i][0].startswith(k):
+                    self.setSelection(i)
+                    return
 
     def onKeyPress(self, event):
         print(event)
@@ -683,6 +776,10 @@ class App(tk.Frame):
             print('up')
             if self.mode == 0:
                 self.mfiles.goUp()
+            elif self.mode == 1:
+                if self.rb.get() == 2:
+                    self.tvShow = None
+                    self.loadMovers()
         elif k == 603979789 or k == 822083616:
             #enter or space
             print('select')
@@ -704,6 +801,10 @@ class App(tk.Frame):
             print('K')
         elif k == 620757100: 
             print('L')
+        elif k == 587202672:
+            print('P')
+            # self.play_pause() 
+            self.media.pause()
             
         elif k == 97: 
             print('A')  #play folder
@@ -719,7 +820,11 @@ class App(tk.Frame):
         elif k == 150995062: 
             print('V')
             if self.mode == 0:
-                self.mfiles.openVlc(self.mfiles.path+self.get_selected_items()[0])
+                # self.mfiles.openVlc(self.mfiles.path+self.get_selected_items()[0])
+              
+                ip = self.mfiles.path+self.get_selected_items()[0]
+                self.media = vlc.MediaPlayer(ip)
+                self.media.play()
             self.mfiles.openVlc(self.citem)
 
         elif k == 251658354: 
@@ -731,6 +836,30 @@ class App(tk.Frame):
             self.setSelection(r)
             self.update()
             # self.click()
+
+    def run_osascript(self, script):
+        process = subprocess.Popen(['osascript', '-e', script],
+                                 stdout=subprocess.PIPE, 
+                                 stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return stdout.decode('utf-8').strip(), stderr.decode('utf-8').strip()
+
+    def play_pause(self):
+        script = 'tell application "Vlc" to playpause'
+        stdout, stderr = self.run_osascript(script)
+        if stderr:
+            print(f"Error: {stderr}")
+        else:
+            print(stdout)
+
+    # def control_media(self):
+    #     script = f'tell application "VLC" to {'pause'}'
+    #     subprocess.run(['osascript', '-e', script], capture_output=True)
+
+        # control_media('playpause') # Toggle play/pause
+        # control_media('next track') # Skip to next track
+        # control_media('previous track') # Go to previous track
+
 
     def form(self, s):
         r = ''
@@ -745,38 +874,8 @@ class App(tk.Frame):
         print("Button clicked!")
  
 
- 
-imgurl = 'https://image.tmdb.org/t/p/w185/'
-msg = '--- ACME OSX MEDIA CENTER ---'
-# dr, files = showFiles()
-# makeWindow()
-
-
-
-root = tk.Tk()
-# root.config(bg='black')
- 
-
-# # Create notebook widget
-# notebook = ttk.Notebook(root)
-# notebook.pack(expand=True, fill="both")
-
-# Create frames for each tab
-# tab1 = ttk.Frame(notebook)
-# tab2 = ttk.Frame(notebook)
-# tab3 = ttk.Frame(notebook)
-
-# notebook.add(tab1, text="Tab 1")
-# notebook.add(tab2, text="Tab 2")
-# notebook.add(tab3, text="Tab 3")
-
-
-myapp1 = App(root, root)   
-  
-
- 
-
-
-# start the program
-myapp1.mainloop()
+if __name__ == '__main__':
+    myapp = App()   
+    # start the program
+    myapp.mainloop()
 

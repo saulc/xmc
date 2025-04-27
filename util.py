@@ -5,8 +5,7 @@
 #to run
 #chmod +x filename 
 #./filename
-
-import vlc
+ 
 import os
 from random import randint
 
@@ -820,11 +819,8 @@ class App(tk.Frame):
         elif k == 150995062: 
             print('V')
             if self.mode == 0:
-                # self.mfiles.openVlc(self.mfiles.path+self.get_selected_items()[0])
-              
-                ip = self.mfiles.path+self.get_selected_items()[0]
-                self.media = vlc.MediaPlayer(ip)
-                self.media.play()
+                self.mfiles.openVlc(self.mfiles.path+self.get_selected_items()[0])
+               
             self.mfiles.openVlc(self.citem)
 
         elif k == 251658354: 

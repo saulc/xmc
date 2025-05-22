@@ -6,6 +6,7 @@ from tkinter import ttk
 
 import subprocess
 import request
+import xdb
  
 
 
@@ -178,10 +179,9 @@ class xfiles:
                     else:  
 
                         duration, dim = self.ui.get_video_metadata(path) #add video info to db
-                       
-
                         print(path, duration, dim, fs)
-                        ei = self.ui.request.getTvInfo(rr[1], m)
+
+                        ei = request.getTvInfo(rr[1], m)
                         ei[5] = m[0:m.rfind('/')+1]
                         ei[6] = m.split('/')[-1]
 
@@ -189,7 +189,7 @@ class xfiles:
                         shows = [ i[0] for i in xdb.getAllTvShows() ]
                         if rr[0] not in shows:
                             print(len(rr))
-                            self.ui.xdb.addTv(rr, True)
+                            xdb.addTv(rr, True)
 
                         self.ui.addTv(ei)
                         # self.addTvShow()

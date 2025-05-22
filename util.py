@@ -178,7 +178,8 @@ class App(tk.Frame):
 
     def sel(self): 
         print('Raido button clicked', self.rb.get())
-        # if self.mode == 1:
+        # if self.mode == 1: self.changeMode() 
+        self.tvShow = None 
         self.loadMovers()
         self.update()
 
@@ -218,7 +219,7 @@ class App(tk.Frame):
         for i in self.qsave:
             print(i)
             if q in i[0].lower():
-                d.append(i)
+                d.append(i)  
         self.setData([], d)
 
 

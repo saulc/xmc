@@ -182,10 +182,10 @@ def getTime():
 if __name__ == '__main__':
     # deleteTvTable()
     # deleteEpTable()
-    # createTvTable()
-    # createEpTable()
+    createTvTable()
+    createEpTable()
 
-    deleteMovieTable()
+    # deleteMovieTable()
     createMovieTable()
     # r = 'Return of the Jedi'
     # r = 'The Empire Strikes Back'

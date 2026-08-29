@@ -23,7 +23,7 @@ import request
 from PIL import ImageTk, Image 
 
 import xdb, xfiles
-import xattr
+# import xattr
 import re
 import time
 import tkinter.font as tkFont
@@ -38,7 +38,8 @@ class App(tk.Frame):
         super().__init__(self.root)
         self.pack() 
         self.mode = 0 #0 files 1 db
-        self.mfiles = xfiles.xfiles('/Volumes/T7/', self)
+        self.mfiles = xfiles.xfiles('/Users/user/Desktop/movers/', self)
+        # self.mfiles = xfiles.xfiles('/Volumes/T7/', self)
 
         self.root.title("xmc")
       
@@ -145,9 +146,9 @@ class App(tk.Frame):
         self.lb.grid(row=0, column=0, pady=0, padx=8) 
         self.cb()
 
-        self.posterFrame.configure(background="systemTransparent" )
+        self.posterFrame.configure(background="black" )
         self.posterFrame.grid(row=0, column=0)
-        self.topFrame.configure(background="systemTransparent" )
+        self.topFrame.configure(background="black" )
         self.topFrame.pack(pady=0, padx=4)
 
         self.buttonframe.configure(background="black" , width=50)

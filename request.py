@@ -134,6 +134,7 @@ def getTvInfo(id, r):
     return epi
 
 def chop( s, tv):
+    print("Chop chop....")
     print(s)
     r = ''
     rr = [] 
@@ -145,6 +146,9 @@ def chop( s, tv):
     for i in range(len(rr)):
         print(str(i) + ' ' + rr[i])
         try:
+            if rr[i].endswith(('avi', 'mp4', 'mkv')):
+                print("found type")
+                break
             if tv: 
                 if len(re.search(r"S(\d+)",rr[i].upper()).groups()):
                     print('found ep thing')
@@ -159,8 +163,7 @@ def chop( s, tv):
                 if len(rr[i]) == 4 : 
                     y = rr[i]
                     break
-            elif rr[i].endswith(['avi', 'mp4', 'mkv']):
-                break
+            
             
         except Exception as e:
             print(e)
